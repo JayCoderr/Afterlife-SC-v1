@@ -360,7 +360,7 @@ namespace _clientids
                 new MenuOption("TV", () => GiveItemToPlayer("TV", 1)),
                 new MenuOption("V-Neck Shirt", () => GiveItemToPlayer("vneck", 1)),
                 new MenuOption("Vest", () => GiveItemToPlayer("vest", 1)),
-                new MenuOption("Viagra", () => GiveItemToPlayer("viagra", 1)),
+                new MenuOption("Viagor", () => GiveItemToPlayer("viagor", 1)), //renamed from Viagra to  Viagor
                 new MenuOption("Watering Can", () => GiveItemToPlayer("wateringcan", 1)),
                 new MenuOption("Wooden Square Table", () => GiveItemToPlayer("woodsquaretable", 1)),
                 new MenuOption("Back", () => CreateSubMenu(menuName, 21))
