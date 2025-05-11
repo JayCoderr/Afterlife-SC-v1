@@ -45,6 +45,12 @@ using Il2CppScheduleOne.AvatarFramework.Equipping;
 using HarmonyLib;
 using Il2CppSystem.IO;
 using MelonLoader.Utils;
+using Il2CppInterop.Runtime.Startup;
+using Il2CppInterop.Runtime.Runtime;
+using UnityEngine.Jobs;
+using Il2CppScheduleOne.Police;
+using Il2CppScheduleOne.Skating;
+using UnityEngine.Events;
 
 namespace _afterlifeMod
 {
@@ -104,10 +110,222 @@ namespace _afterlifeMod
         {
             MelonCoroutines.Start(WaitForPlayerMovement((playerMovement) =>
             {
-                playerMovement.MoveSpeedMultiplier = speedForceValue;
+                playerMovement.CurrentSprintMultiplier = speedForceValue;
                 MelonLogger.Msg($"✅ PlayerMovement component found and modified.\nSet Jump Force: {playerMovement.jumpForce.ToString()}");
             }));
         }
+        public static bool AutoTeaBagEnabled = false;
+
+        public static void AutoTeaBagMode()
+        {
+            AutoTeaBagEnabled = !AutoTeaBagEnabled;
+
+            if (AutoTeaBagEnabled)
+            {
+                MelonLogger.Msg("✅ Teabagging the ground...");
+                MelonCoroutines.Start(AutoTeaBagLoop());
+            }
+            else
+            {
+                MelonLogger.Msg("❌ Stopped teabagging.");
+            }
+        }
+
+        public static bool autoDeleteEnabled = false;
+        public static List<GameObject> hiddenObjects = new List<GameObject>();
+
+        public static void AutoDeleteNearbyCollidersToggle()
+        {
+            autoDeleteEnabled = !autoDeleteEnabled;
+            if (autoDeleteEnabled)
+            {
+                MelonLogger.Msg("✅ Auto-deleting nearby colliders enabled.");
+                MelonCoroutines.Start(AutoDeleteNearbyColliders());
+            }
+            else
+            {
+                MelonLogger.Msg("❌ Auto-deleting nearby colliders disabled. Restoring objects.");
+                foreach (var obj in hiddenObjects)
+                {
+                    if (obj != null) obj.SetActive(true);
+                }
+                hiddenObjects.Clear();
+            }
+        }
+
+        private static IEnumerator AutoDeleteNearbyColliders()
+        {
+            while (autoDeleteEnabled)
+            {
+                if (Player.Local != null && Player.Local.LocalGameObject != null)
+                {
+                    Vector3 playerPos = Player.Local.LocalGameObject.transform.position;
+
+                    // Check all colliders within 10 units
+                    Collider[] nearby = Physics.OverlapSphere(playerPos, 10f);
+                    foreach (var col in nearby)
+                    {
+                        GameObject obj = col.gameObject;
+
+                        if (obj != null && obj != Player.Local.LocalGameObject && obj.activeSelf)
+                        {
+                            float distance = Vector3.Distance(playerPos, obj.transform.position);
+
+                            if (distance < 10f && !hiddenObjects.Contains(obj))
+                            {
+                                obj.SetActive(false);
+                                hiddenObjects.Add(obj);
+                            }
+                        }
+                    }
+
+                    // Reactivate any objects that are now 25+ units away
+                    for (int i = hiddenObjects.Count - 1; i >= 0; i--)
+                    {
+                        GameObject obj = hiddenObjects[i];
+                        if (obj == null) continue;
+
+                        float distance = Vector3.Distance(playerPos, obj.transform.position);
+                        if (distance >= 25f)
+                        {
+                            obj.SetActive(true);
+                            hiddenObjects.RemoveAt(i);
+                        }
+                    }
+                }
+
+                yield return new WaitForSeconds(1f); // check every 1 second
+            }
+        }
+
+
+        public static bool isWideFOV = false;
+
+        public static void ToggleFOV()
+        {
+            isWideFOV = !isWideFOV;
+            Camera.main.fieldOfView = isWideFOV ? 100f : 60f;
+        }
+        public static IEnumerator SmoothFOV(float targetFOV, float duration = 1f)
+        {
+            float startFOV = Camera.main.fieldOfView;
+            float elapsed = 0f;
+
+            while (elapsed < duration)
+            {
+                Camera.main.fieldOfView = Mathf.Lerp(startFOV, targetFOV, elapsed / duration);
+                elapsed += Time.deltaTime;
+                yield return null;
+            }
+
+            Camera.main.fieldOfView = targetFOV;
+        }
+        private static IEnumerator AutoTeaBagLoop()
+        {
+            yield return WaitForPlayerMovement((playerMovement) =>
+            {
+                MelonCoroutines.Start(TeaBagRoutine(playerMovement));
+            });
+        }
+
+        private static IEnumerator TeaBagRoutine(PlayerMovement playerMovement)
+        {
+            while (AutoTeaBagEnabled)
+            {
+                playerMovement.isCrouched = true;
+                yield return new WaitForSeconds(0.3f);
+                playerMovement.isCrouched = false;
+                yield return new WaitForSeconds(0.3f);
+            }
+        }
+        private static bool isRotatingToPoliceNPC = false;
+
+        public static void ToggleRotateToPoliceNPC()
+        {
+            isRotatingToPoliceNPC = !isRotatingToPoliceNPC;
+
+            if (isRotatingToPoliceNPC)
+                MelonCoroutines.Start(RotateToNearestPoliceNPCTask());
+        }
+
+        private static IEnumerator RotateToNearestPoliceNPCTask()
+        {
+            while (isRotatingToPoliceNPC)
+            {
+                if (Input.GetMouseButton(1)) // RMB held
+                {
+                    GameObject nearestPoliceNPC = null;
+                    float shortestDistance = float.MaxValue;
+                    Vector3 playerPos = Player.Local.transform.position;
+
+                    foreach (string npcName in _allnpcs.allNpcCharacters)
+                    {
+                        if (!npcName.ToLower().Contains("police"))
+                            continue;
+
+                        GameObject npcObj = GameObject.Find(npcName);
+                        if (npcObj == null) continue;
+
+                        float dist = Vector3.Distance(playerPos, npcObj.transform.position);
+                        if (dist < shortestDistance)
+                        {
+                            shortestDistance = dist;
+                            nearestPoliceNPC = npcObj;
+                        }
+                    }
+
+                    if (nearestPoliceNPC != null)
+                    {
+                        Vector3 dir = nearestPoliceNPC.transform.position - playerPos;
+                        Quaternion rot = Quaternion.LookRotation(dir.normalized);
+                        Player.Local.transform.rotation = Quaternion.Slerp(Player.Local.transform.rotation, rot, Time.deltaTime * 5f);
+                    }
+                }
+
+                yield return null;
+            }
+        }
+
+        public static void InvisibleToggle(bool Active)
+        {
+            Player.Local.Avatar.SetVisible(Active);
+           // MelonCoroutines.Start(_unityfunctions.ScheduleIObjectActive(Avatar.Object, false));
+        }
+
+        public static void SetWorldTime(int timeToSet)
+        {
+            NetworkSingleton<TimeManager>.Instance.SetTime(timeToSet, false);
+        }
+
+        public static void SetWorldTimeScale(int timeToSet)
+        {
+            NetworkSingleton<TimeManager>.Instance.TimeProgressionMultiplier = timeToSet;
+        }
+
+        public static void SetTimeScale(string[] args)
+        {
+            if (args.Length == 0 || !float.TryParse(args[0], out float time))
+            {
+                MelonLogger.Warning("❌ Invalid or missing time argument.");
+                return;
+            }
+
+            try
+            {
+                var cmd = new Il2CppScheduleOne.Console.SetTimeScale();
+                var commandList = new Il2CppSystem.Collections.Generic.List<string>();
+                commandList.Add("settimescale");
+                commandList.Add(time.ToString());
+                cmd.Execute(commandList);
+
+                MelonLogger.Msg($"✅ World time set to {time}");
+            }
+            catch (Exception ex)
+            {
+                MelonLogger.Error($"❌ Failed to set world time: {ex.Message}");
+            }
+        }
+
         public static void SetGravity(float gravityForceValue)
         {
             MelonCoroutines.Start(WaitForPlayerMovement((playerMovement) =>
@@ -789,6 +1007,115 @@ namespace _afterlifeMod
                 MelonLogger.Warning("❌ Mouse click didn't hit anything.");
             }
         }
+        public static void ClearWantedLevel()
+        {
+            PlayerCrimeData componentInParent = GameObject.Find("Player_Local").GetComponentInParent<PlayerCrimeData>();
+            componentInParent.CurrentPursuitLevel = 0;
+            componentInParent.TimeSinceSighted = 100f;
+        }
+
+        public static bool MoneyGun = false;
+
+        public static void MoneyGunCheck()
+        {
+            if (MoneyGun)
+            {
+                if (Player.Local.GetInventoryString().Contains("M1911") && Input.GetMouseButton(1))
+                {
+                    PlayerInventory.Instance.cashInstance.ChangeBalance(999);
+                }
+            }
+        }
+
+        public static void SpawnAssetAtMouse(GameObject prefabToSpawn)
+        {
+            if (prefabToSpawn == null)
+            {
+                MelonLogger.Error("❌ Prefab to spawn is null.");
+                return;
+            }
+
+            Camera cam = Camera.main;
+            if (cam == null)
+            {
+                MelonLogger.Warning("❌ Could not find main camera.");
+                return;
+            }
+
+            Ray ray = cam.ScreenPointToRay(Input.mousePosition);
+            if (Physics.Raycast(ray, out RaycastHit hitInfo, 100f))
+            {
+                Vector3 spawnPosition = hitInfo.point;
+
+                // ✅ Instantiate it at mouse location
+                GameObject spawned = UnityEngine.Object.Instantiate(prefabToSpawn, spawnPosition, Quaternion.identity);
+
+                // Optional: prevent destruction on scene change
+                UnityEngine.Object.DontDestroyOnLoad(spawned);
+
+                MelonLogger.Msg($"✨ Spawned prefab '{prefabToSpawn.name}' at {spawnPosition}");
+            }
+            else
+            {
+                MelonLogger.Warning("❌ Mouse click didn't hit anything.");
+            }
+        }
+        public static void KamikizeRocks(string searchName, int count = 10)
+        {
+            Camera cam = Camera.main;
+            if (cam == null)
+            {
+                MelonLogger.Warning("❌ Could not find main camera.");
+                return;
+            }
+
+            Ray ray = cam.ScreenPointToRay(Input.mousePosition);
+            if (Physics.Raycast(ray, out RaycastHit hitInfo, 100f))
+            {
+                Vector3 targetPosition = hitInfo.point;
+
+                for (int i = 0; i < count; i++)
+                {
+                    Vector3 spawnPos = new Vector3(
+                        targetPosition.x + UnityEngine.Random.Range(-5f, 5f),
+                        999f,
+                        targetPosition.z + UnityEngine.Random.Range(-5f, 5f)
+                    );
+
+                    MelonCoroutines.Start(SpawnAndDropRock(searchName, spawnPos, targetPosition));
+                }
+            }
+            else
+            {
+                MelonLogger.Warning("❌ Mouse click didn't hit anything.");
+            }
+        }
+
+        private static IEnumerator SpawnAndDropRock(string searchName, Vector3 start, Vector3 target)
+        {
+            yield return SpawnNetWorkScheduleIObjectCoroutineX(
+                searchName: searchName,
+                newPosition: start,
+                newRotation: Quaternion.identity,
+                setActive: true
+            );
+
+            GameObject rock = GameObject.Find(searchName); // You may want to use a better lookup for multiple objects
+
+            if (rock != null)
+            {
+                Rigidbody rb = rock.GetComponent<Rigidbody>();
+                if (rb == null)
+                {
+                    rb = rock.AddComponent<Rigidbody>();
+                }
+
+                // Apply force toward the target
+                Vector3 direction = (target - start).normalized;
+                float speed = 200f; // Adjust as needed
+                rb.velocity = direction * speed;
+            }
+        }
 
         public static void SkybaseHouseSpawner(string searchName)
         {
@@ -817,7 +1144,108 @@ namespace _afterlifeMod
             {
                 MelonLogger.Warning("❌ Mouse click didn't hit anything.");
             }
-        }//CreateNewObjectWithGUI//CreateNewObjectWithGUI
+        }
+        public static float launchForce = 100f;
+
+        public static void BouncePadSpawner(string searchName)
+        {
+            Camera cam = Camera.main;
+            if (cam == null)
+            {
+                MelonLogger.Warning("❌ Could not find main camera.");
+                return;
+            }
+
+            Ray ray = cam.ScreenPointToRay(Input.mousePosition);
+            if (Physics.Raycast(ray, out RaycastHit hitInfo, 100f))
+            {
+                Vector3 spawnPosition = hitInfo.point;
+
+                MelonCoroutines.Start(SpawnAndAttachTrigger(searchName, spawnPosition + new Vector3(0, 50, 0)));
+            }
+            else
+            {
+                MelonLogger.Warning("❌ Mouse click didn't hit anything.");
+            }
+        }
+
+        public static IEnumerator SpawnAndAttachTrigger(string searchName, Vector3 spawnPosition)
+        {
+            var spawnCoroutine = SpawnNetWorkScheduleIObjectCoroutineX(
+                searchName: searchName,
+                newPosition: spawnPosition,
+                newRotation: Quaternion.identity,
+                setActive: true
+            );
+
+            yield return spawnCoroutine;
+
+            GameObject spawned = GameObject.Find(searchName); // Adjust if your object name is different
+            if (spawned != null)
+            {
+                if (!spawned.TryGetComponent<Collider>(out var col))
+                {
+                    col = spawned.AddComponent<BoxCollider>();
+                }
+                col.isTrigger = true;
+
+                if (!spawned.TryGetComponent<Rigidbody>(out var rb))
+                {
+                    rb = spawned.AddComponent<Rigidbody>();
+                    rb.isKinematic = true;
+                }
+
+                var trigger = spawned.AddComponent<BouncePadTrigger>();
+                trigger.launchForce = launchForce;
+            }
+            else
+            {
+                MelonLogger.Warning("❌ Spawned object not found.");
+            }
+        }
+
+        public static void MakeObjectDrivable(string searchName, GameObject searchObject)
+        {
+            // Check if the searchObject is null
+            if (searchObject == null)
+            {
+                MelonLogger.Error("❌ The provided searchObject is null. Cannot proceed.");
+                return;
+            }
+
+            // Get the main camera
+            Camera cam = Camera.main;
+            if (cam == null)
+            {
+                MelonLogger.Warning("❌ Could not find the main camera.");
+                return;
+            }
+
+            // Raycast to get the spawn position
+            Ray ray = cam.ScreenPointToRay(Input.mousePosition);
+            if (Physics.Raycast(ray, out RaycastHit hitInfo, 100f))
+            {
+                Vector3 spawnPosition = hitInfo.point;
+
+                MelonLogger.Msg($"✅ Raycast hit at position: {spawnPosition}. Spawning '{searchName}' at {spawnPosition}.");
+
+                // Start the coroutine to spawn the object
+                MelonCoroutines.Start(
+                    SpawnNetWorkScheduleIObjectCoroutineX(
+                        searchName: searchName,
+                        newPosition: spawnPosition,  // Offset to spawn slightly above the ground
+                        newRotation: Quaternion.identity,  // No rotation, reset to default
+                        setActive: true,
+                        copyComponentsFrom: searchObject // Pass the GameObject to copy components from
+                    )
+                );
+            }
+            else
+            {
+                MelonLogger.Warning("❌ Mouse click didn't hit anything.");
+            }
+        }
+
         public static void CreateRickPortal(string ObjectName, string hintString, string ImageUrl)
         {
             Camera cam = Camera.main;
@@ -926,7 +1354,7 @@ namespace _afterlifeMod
                 Vector3 spawnPosition = hitInfo.point;
 
                 MelonCoroutines.Start(
-                    SpawnScheduleIObjectCoroutine(
+                    SpawnNetWorkScheduleIObjectCoroutine(
                         searchName: NPCName,
                         newPosition: spawnPosition,
                         newRotation: new Quaternion(0, 0, 0, 0),
@@ -1168,6 +1596,7 @@ namespace _afterlifeMod
             if (networkManager.IsServer)
             {
                 networkManager.ServerManager.Spawn(clone);
+
                 MelonLogger.Msg("📡 NetworkObject successfully spawned on the server.");
             }
             else
@@ -1178,6 +1607,138 @@ namespace _afterlifeMod
             // Ensure object is activated if requested
             MelonCoroutines.Start(_unityfunctions.ScheduleIObjectActive(clone.name, true));
         }
+        public static IEnumerator SpawnNetWorkScheduleIObjectCoroutineX(string searchName, Vector3 newPosition, Quaternion newRotation, bool setActive, GameObject copyComponentsFrom = null)
+        {
+            GameObject original = null;
+
+            // --- SEARCH ALL SCENES ---
+            for (int sceneIndex = 0; sceneIndex < SceneManager.sceneCount; sceneIndex++)
+            {
+                Scene scene = SceneManager.GetSceneAt(sceneIndex);
+                if (!scene.isLoaded)
+                    continue;
+
+                foreach (GameObject rootObject in scene.GetRootGameObjects())
+                {
+                    Transform foundTransform = FindChildRecursive(rootObject.transform, searchName);
+                    if (foundTransform != null)
+                    {
+                        MelonLogger.Msg($"✅ Found '{searchName}' in scene '{scene.name}'.");
+                        original = GetRootX(foundTransform.gameObject);
+                        break;
+                    }
+                }
+
+                if (original != null)
+                    break;
+            }
+
+            // --- ALSO SEARCH HIDDEN OBJECTS ---
+            if (original == null)
+            {
+                foreach (var go in Resources.FindObjectsOfTypeAll<GameObject>())
+                {
+                    if (go == null || string.IsNullOrEmpty(go.name))
+                        continue;
+
+                    if (go.name.Equals(searchName, StringComparison.OrdinalIgnoreCase) && !go.name.Contains("Clone"))
+                    {
+                        if (go.hideFlags == HideFlags.HideAndDontSave || string.IsNullOrEmpty(go.scene.name))
+                        {
+                            MelonLogger.Msg($"✅ Found hidden object: '{go.name}' in scene: '{go.scene.name}'");
+                            original = GetRoot(go);
+                            break;
+                        }
+                    }
+                }
+            }
+
+            if (original == null)
+            {
+                MelonLogger.Error($"❌ Could not find GameObject with name '{searchName}' in any loaded scenes or hidden scenes.");
+                yield break;
+            }
+
+            // Instantiate the original GameObject
+            GameObject clone = UnityEngine.Object.Instantiate(original);
+            clone.name = original.name + "_Clone";
+
+            // Temporarily deactivate the clone before updating its position
+            clone.SetActive(false);
+
+            // Update the clone's position and rotation
+            clone.transform.position = newPosition;
+            clone.transform.rotation = newRotation;
+
+            // --- MOVE THE COPY COMPONENTS OBJECT AS WELL ---
+            if (copyComponentsFrom != null)
+            {
+                MelonLogger.Msg("✅ Copy source provided. Moving and parenting...");
+
+                if (copyComponentsFrom is GameObject validCopySource)
+                {
+                    validCopySource.transform.position = newPosition;
+                    validCopySource.transform.rotation = newRotation;
+
+                    validCopySource.transform.SetParent(clone.transform, true);
+                    MelonLogger.Msg($"✅ GameObject '{validCopySource.name}' moved and parented under '{clone.name}'!");
+                }
+                else if (copyComponentsFrom is Il2CppSystem.Object il2cppSource)
+                {
+                    Transform il2cppTransform = il2cppSource.TryCast<Transform>();
+                    if (il2cppTransform != null)
+                    {
+                        il2cppTransform.position = newPosition;
+                        il2cppTransform.rotation = newRotation;
+
+                        il2cppTransform.SetParent(clone.transform, true);
+                        MelonLogger.Msg($"✅ IL2CPP Transform '{il2cppTransform.name}' moved and parented under '{clone.name}'!");
+                    }
+                    else
+                    {
+                        MelonLogger.Error("❌ Il2CppSystem.Object is not a Transform or cannot be cast.");
+                    }
+                }
+                else
+                {
+                    MelonLogger.Error("❌ Provided object is not a valid GameObject or Il2CppSystem.Object.");
+                }
+            }
+            else
+            {
+                MelonLogger.Warning("❌ No copy source provided. Skipping parenting.");
+            }
+
+            // Reactivate the clone after all setup
+            clone.SetActive(setActive);
+        }
+
+        // Helper to recursively search children
+        private static Transform FindChildRecursive(Transform parent, string searchName)
+        {
+            if (parent.name.Equals(searchName, StringComparison.OrdinalIgnoreCase))
+                return parent;
+
+            for (int i = 0; i < parent.childCount; i++)
+            {
+                Transform found = FindChildRecursive(parent.GetChild(i), searchName);
+                if (found != null)
+                    return found;
+            }
+            return null;
+        }
+
+        // Helper to find the root GameObject
+        private static GameObject GetRootX(GameObject obj)
+        {
+            Transform current = obj.transform;
+            while (current.parent != null)
+            {
+                current = current.parent;
+            }
+            return current.gameObject;
+        }
+
         public static IEnumerator SpawnNetWorkScheduleIObjectCoroutine(string searchName, Vector3 newPosition, Quaternion newRotation, bool setActive)
         {
             GameObject original = null;
@@ -1316,6 +1877,107 @@ namespace _afterlifeMod
 
             MelonCoroutines.Start(WaitAndGiveItem(args));
         }
+        public static bool ValidatePlayer(Player player, string actionName)
+        {
+            if (player == null)
+            {
+                MelonLogger.Error($"Cannot perform {actionName} on a null player");
+                return false;
+            }
+            return true;
+        }
+        public static void TeleportToPlayer(Player player)
+        {
+            if (!ValidatePlayer(player, "teleport"))
+                return;
+
+            // Directly assign since Vector3 is a value type.
+            Player.Local.transform.position = player.transform.position;
+        }
+
+        private static bool _isFollowing = false;
+        private static CancellationTokenSource _followTokenSource;
+
+        public static void ToggleFollowPlayer(Player childPlayer, Player parentPlayer)
+        {
+            if (_isFollowing)
+            {
+                // Stop following
+                _isFollowing = false;
+                _followTokenSource?.Cancel();
+                _followTokenSource = null;
+
+                if (childPlayer != null)
+                    LockPlayerMovement(childPlayer, false);
+
+                MelonLogger.Msg($"{childPlayer?.name ?? "Unknown"} stopped following.");
+                return;
+            }
+
+            // Start following
+            if (!ValidatePlayer(childPlayer, "follow (child)") || !ValidatePlayer(parentPlayer, "follow (target)"))
+                return;
+
+            _isFollowing = true;
+            _followTokenSource = new CancellationTokenSource();
+
+            LockPlayerMovement(childPlayer, true);
+            FollowPlayerLoop(childPlayer, parentPlayer, _followTokenSource.Token);
+            MelonLogger.Msg($"{childPlayer.name} started following {parentPlayer.name}.");
+        }
+
+        private static async void FollowPlayerLoop(Player child, Player parent, CancellationToken token)
+        {
+            try
+            {
+                while (!token.IsCancellationRequested)
+                {
+                    if (!ValidatePlayer(child, "follow (child)") || !ValidatePlayer(parent, "follow (target)"))
+                        break;
+
+                    Vector3 targetPosition = parent.transform.position + parent.transform.forward * 5f;
+                    child.transform.position = Vector3.Lerp(child.transform.position, targetPosition, 0.15f);
+
+                    await Task.Delay(20, token);
+                }
+            }
+            catch (Exception ex)
+            {
+                MelonLogger.Error($"Follow loop crashed: {ex.Message}");
+            }
+            finally
+            {
+                if (child != null)
+                    LockPlayerMovement(child, false);
+                _isFollowing = false;
+            }
+        }
+
+        private static void LockPlayerMovement(Player player, bool lockMovement)
+        {
+            if (player == null)
+                return;
+
+            var rigidbody = player.GetComponent<Rigidbody>();
+            if (rigidbody != null)
+            {
+                rigidbody.velocity = Vector3.zero;
+                rigidbody.isKinematic = lockMovement;
+            }
+
+            var characterController = player.GetComponent<CharacterController>();
+            if (characterController != null)
+            {
+                characterController.enabled = !lockMovement;
+            }
+
+            var movementScript = player.GetComponent<PlayerMovement>(); // Replace if different
+            if (movementScript != null)
+            {
+                movementScript.enabled = !lockMovement;
+            }
+        }
+
         public static IEnumerator WaitAndGiveItem(Il2CppSystem.Collections.Generic.List<string> args)
         {
             // Wait for player inventory to be ready
@@ -1937,6 +2599,16 @@ namespace _afterlifeMod
 
             MelonLogger.Msg($"Toggled '{ui}' - GameObject, Container, and Canvas are now {(newState ? "enabled" : "disabled")}.");
         }
+        public static bool BlackHoleEnabled = false;
+        public static void BlackHoleMode()
+        {
+            if (Camera.main == null) return;
+
+            BlackHoleEnabled = !BlackHoleEnabled;
+            Camera.main.farClipPlane = BlackHoleEnabled ? 10f : 1000f;
+        }
+
+        private static bool isRtsModeEnabled = false;
         public static void SetCameraMod(string colorString)
         {
             var camera = Camera.main;
@@ -1993,9 +2665,34 @@ namespace _afterlifeMod
 
             if (colorString.Equals("rts", StringComparison.OrdinalIgnoreCase))
             {
-                camera.orthographic = true;
-                camera.orthographicSize = 5f;
-                MelonLogger.Msg("RTS mode enabled: orthographic view set with size 5.");
+                isRtsModeEnabled = !isRtsModeEnabled;
+
+                if (isRtsModeEnabled)
+                {
+                    camera.orthographic = true;
+                    camera.orthographicSize = 5f;
+
+                    // Optional: adjust position/rotation to top-down view
+                    camera.transform.rotation = Quaternion.Euler(90f, 0f, 0f);
+
+                    // Raise camera height to prevent clipping
+                    Vector3 pos = camera.transform.position;
+                    pos.y = Mathf.Max(pos.y, 50f); // Adjust as needed for your terrain height
+                    camera.transform.position = pos;
+
+                    MelonLogger.Msg("RTS mode enabled: orthographic view set.");
+                }
+                else
+                {
+                    camera.orthographic = false;
+                    camera.orthographicSize = 0f;
+
+                    // Reset position/rotation if needed
+                    camera.transform.rotation = Quaternion.identity;
+
+                    MelonLogger.Msg("RTS mode disabled: perspective view restored.");
+                }
+
                 return;
             }
 
@@ -2073,6 +2770,40 @@ namespace _afterlifeMod
             else
             {
                 MelonLogger.Error($"Invalid color: '{colorString}'. Use a color name, hex (e.g., '#FF0000'), 'wallmod', 'rts mode', or 'reset'.");
+            }
+        }
+        private static bool discoSkyEnabled = false;
+        private static object discoSkyCoroutine;
+
+        public static void ToggleDiscoSkyMode()
+        {
+            if (!discoSkyEnabled)
+            {
+                discoSkyEnabled = true;
+                discoSkyCoroutine = MelonCoroutines.Start(DiscoSkyLoop());
+                MelonLogger.Msg("🌈 DiscoSkyMode ENABLED.");
+            }
+            else
+            {
+                discoSkyEnabled = false;
+                if (discoSkyCoroutine != null)
+                    MelonCoroutines.Stop(discoSkyCoroutine);
+
+                Camera.main.clearFlags = CameraClearFlags.Skybox; // Or SolidColor with default
+                Camera.main.backgroundColor = Color.black; // Reset
+                MelonLogger.Msg("❌ DiscoSkyMode DISABLED.");
+            }
+        }
+
+        public static IEnumerator DiscoSkyLoop()
+        {
+            var camera = Camera.main;
+            camera.clearFlags = CameraClearFlags.SolidColor;
+
+            while (discoSkyEnabled)
+            {
+                camera.backgroundColor = new Color(UnityEngine.Random.value, UnityEngine.Random.value, UnityEngine.Random.value);
+                yield return new WaitForSeconds(0.2f);
             }
         }
 
@@ -2292,6 +3023,321 @@ namespace _afterlifeMod
 
                 thirdPersonEnabled = false;
                 MelonLogger.Msg("📷 Camera reset to original position");
+            }
+        }
+        private static int rotationIndex = 0;
+        private static Quaternion originalRotation;
+        private static readonly Quaternion[] customRotations = new Quaternion[]
+        {
+            Quaternion.Euler(0, 0, 0),          // Will be overwritten with original
+            Quaternion.Euler(0, 45, 0),
+            Quaternion.Euler(0, 90, 0),
+            Quaternion.Euler(30, 180, 0),
+            Quaternion.Euler(-15, 270, 10),
+        };
+
+        public static void ToggleCameraRotation()
+        {
+            if (rotationIndex == 0)
+                originalRotation = Player.Local.transform.rotation;
+
+            rotationIndex = (rotationIndex + 1) % customRotations.Length;
+
+            Quaternion targetRotation = rotationIndex == 0
+                ? originalRotation
+                : customRotations[rotationIndex];
+
+            Player.Local.transform.rotation = targetRotation;
+        }
+
+
+        private static bool isDrunkCameraActive = false;
+        private static Coroutine drunkRoutine;
+
+        public static void ToggleDrunkCamera(float durationSeconds)
+        {
+            if (isDrunkCameraActive)
+            {
+                isDrunkCameraActive = false; // this stops the coroutine on next frame
+                return;
+            }
+
+            isDrunkCameraActive = true;
+            drunkRoutine = (Coroutine)MelonCoroutines.Start(DrunkCameraRoutine(durationSeconds));
+        }
+
+        private static IEnumerator DrunkCameraRoutine(float duration)
+        {
+            Transform playerTransform = Player.Local.transform;
+            float startTime = Time.time;
+            float drunkStrength = 1.5f;
+            float speed = 1.0f;
+
+            while (isDrunkCameraActive && (Time.time - startTime < duration))
+            {
+                float yaw = Mathf.Sin(Time.time * speed) * drunkStrength;
+                float pitch = Mathf.Cos(Time.time * speed * 1.3f) * drunkStrength;
+
+                Quaternion drunkOffset = Quaternion.Euler(pitch, yaw, 0);
+                playerTransform.localRotation = Quaternion.Slerp(playerTransform.localRotation, drunkOffset, Time.deltaTime * 2f);
+
+                yield return null;
+            }
+
+            isDrunkCameraActive = false;
+        }
+
+        public static void ToggleGUI(Player target)
+        {
+            if (target == null || !ValidatePlayer(target, "gui teleport target"))
+                return;
+
+            _afterlifeMod.TargetPlayer = target;
+            _afterlifeMod.showGUIPlayer = !_afterlifeMod.showGUIPlayer;
+        }
+        public static void SetSkateboardJumpForce(object val)
+        {
+            if (float.TryParse(val as string, out var f))
+                Player.Local.ActiveSkateboard.JumpForce = f;
+            Player.Local._ActiveSkateboard_k__BackingField.JumpForce = f;
+        }
+
+        public static void SkateboardSuperJump()
+        {
+            Player.Local.ActiveSkateboard.JumpForce = 300f;
+            Player.Local._ActiveSkateboard_k__BackingField.JumpForce = 300f;
+        }
+
+        public static void SetSkateboardPushForce(object val)
+        {
+            if (float.TryParse(val as string, out var f))
+                Player.Local.ActiveSkateboard.PushForceMultiplier = f;
+            Player.Local._ActiveSkateboard_k__BackingField.PushForceMultiplier = f;
+        }
+
+        public static IEnumerator GiveSuperJumpTimeSpecified(float timeBetween)
+        {
+            MelonLogger.Msg($"You have super jump for {timeBetween} seconds.");
+            SetJumpForce(150f);
+            yield return new WaitForSeconds(timeBetween); 
+            SetJumpForce(10f);
+        }
+        public static IEnumerator GiveGodModeTimeSpecified(float timeBetween)
+        {
+            MelonLogger.Msg($"You have godmode for {timeBetween} seconds.");
+            ToggleGodMode(); 
+            yield return new WaitForSeconds(timeBetween); 
+            ToggleGodMode();
+        }
+        public static IEnumerator GiveSetMovementSpeedTimeSpecified(float timeBetween)
+        {
+            MelonLogger.Msg($"You have godmode for {timeBetween} seconds.");
+            SetMovementSpeed(500f);
+            yield return new WaitForSeconds(timeBetween);
+            SetMovementSpeed(10f);
+        }
+
+
+        public static bool isLoaded = false;
+
+        private static GameObject audioObj;
+        private static AudioSource source;
+        private static string currentTrack = null;
+        private static bool isAudioPlaying = false;
+        public static IEnumerator PlayAudio(string MP3Name)
+        {
+            if (isAudioPlaying)
+            {
+                if (audioObj != null)
+                {
+                    if (source != null && source.isPlaying)
+                    {
+                        source.Stop();
+                        MelonLogger.Msg($"Stopped playing: {currentTrack}");
+                    }
+
+                    UnityEngine.Object.Destroy(audioObj);
+                    audioObj = null;
+                    source = null;
+                    currentTrack = null;
+                }
+
+                isAudioPlaying = false;
+                yield break;
+            }
+
+            string modsDir = MelonLoader.Utils.MelonEnvironment.ModsDirectory;
+            string musicDir = Path.Combine(modsDir, "AfterlifeMusic");
+            Directory.CreateDirectory(musicDir);
+
+            string fileName = MP3Name.StartsWith("http") ? ExtractFileNameFromUrl(MP3Name) : MP3Name;
+            string filePath = Path.Combine(musicDir, fileName);
+
+            // Download if it's a URL
+            if (MP3Name.StartsWith("http://") || MP3Name.StartsWith("https://"))
+            {
+                UnityWebRequest uwr = UnityWebRequest.Get(MP3Name);
+                yield return uwr.SendWebRequest();
+
+                if (uwr.isNetworkError || uwr.isHttpError)
+                {
+                    MelonLogger.Error("Download failed: " + uwr.error);
+                    yield break;
+                }
+
+                byte[] data = uwr.downloadHandler.data;
+
+                // Log the file size to ensure we actually downloaded something
+                MelonLogger.Msg($"Downloaded {data.Length} bytes");
+
+                // Log the first few bytes of the file to check if it's an MP3 file
+                string firstBytes = BitConverter.ToString(data.Take(10).ToArray());
+                MelonLogger.Msg($"First 10 bytes of the downloaded file: {firstBytes}");
+
+                // Save the file
+                File.WriteAllBytes(filePath, data);
+                MelonLogger.Msg($"Saved audio to: {filePath}");
+
+                uwr.Dispose(); // Manually dispose
+            }
+
+            if (!File.Exists(filePath))
+            {
+                MelonLogger.Error("Audio file not found: " + filePath);
+                yield break;
+            }
+
+            // Verify the file extension is correct and the file is valid MP3
+            if (!filePath.EndsWith(".mp3"))
+            {
+                MelonLogger.Error("The downloaded file is not an MP3 file: " + filePath);
+                yield break;
+            }
+
+            // Check if the file size is greater than 0 (i.e., not empty)
+            if (new FileInfo(filePath).Length == 0)
+            {
+                MelonLogger.Error("The MP3 file is empty: " + filePath);
+                yield break;
+            }
+
+            string uri = "file:///" + Path.GetFullPath(filePath).Replace("\\", "/");
+            MelonLogger.Msg("Attempting to load audio from: " + uri);
+
+            WWW www = new WWW(uri);
+            yield return www;
+
+            if (!string.IsNullOrEmpty(www.error))
+            {
+                MelonLogger.Error("Failed to load audio: " + www.error);
+            }
+            else
+            {
+                AudioClip clip = www.GetAudioClip(false, false, AudioType.MPEG);
+                audioObj = new GameObject("MP3Player");
+                source = audioObj.AddComponent<AudioSource>();
+                source.clip = clip;
+                source.Play();
+                currentTrack = Path.GetFileName(filePath);
+
+                UnityEngine.Object.DontDestroyOnLoad(audioObj);
+                MelonLogger.Msg($"Now playing: {currentTrack}");
+                isAudioPlaying = true;
+            }
+        }
+
+        private static string ExtractFileNameFromUrl(string url)
+        {
+            Uri uri = new Uri(url);
+            string fileName = Path.GetFileName(uri.LocalPath); // Extract the file name
+            return fileName.Split('?')[0]; // Remove any query parameters if they exist
+        }
+    }
+
+    public static class OfficerCache
+    {
+        public static List<PoliceOfficer> officers = new List<PoliceOfficer>();
+
+        public static void CacheOfficers()
+        {
+            officers.Clear();
+            officers.AddRange(UnityEngine.Object.FindObjectsOfType<PoliceOfficer>());
+            MelonLogger.Msg($"Found {officers.Count} PoliceOfficer objects.");
+        }
+    }
+    public class BouncePadTrigger : MonoBehaviour
+    {
+        public float launchForce = 100f;
+
+        private void OnTriggerEnter(Collider other)
+        {
+            var player = other.GetComponent<Player>();
+            if (player != null)
+            {
+                Rigidbody rb = player.GetComponent<Rigidbody>();
+                if (rb != null)
+                {
+                    rb.velocity = new Vector3(rb.velocity.x, launchForce, rb.velocity.z);
+                }
+            }
+        }
+    }
+    public static class PoliceESPController
+    {
+        public static bool espEnabled = false;
+
+        public static void ToggleESP()
+        {
+            espEnabled = !espEnabled;
+
+            if (espEnabled && _espObject == null)
+            {
+                _espObject = new GameObject("PoliceESP");
+                _espObject.AddComponent<PoliceESP>();
+                UnityEngine.Object.DontDestroyOnLoad(_espObject);
+            }
+            else if (!espEnabled && _espObject != null)
+            {
+                UnityEngine.Object.Destroy(_espObject);
+                _espObject = null;
+            }
+        }
+
+        private static GameObject _espObject;
+    }
+    public class PoliceESP : MonoBehaviour
+    {
+        private void OnGUI()
+        {
+            if (!PoliceESPController.espEnabled) return;
+
+            foreach (string npcName in _allnpcs.allNpcCharacters)
+            {
+                if (!npcName.ToLower().Contains("police"))
+                    continue;
+
+                GameObject npc = GameObject.Find(npcName);
+                if (npc == null) continue;
+
+                Vector3 worldPos = npc.transform.position;
+                Vector3 screenPos = Camera.main.WorldToScreenPoint(worldPos);
+
+                if (screenPos.z <= 0) continue;
+
+                float boxWidth = 100f;
+                float boxHeight = 120f;
+                float x = screenPos.x - (boxWidth / 2);
+                float y = Screen.height - screenPos.y - boxHeight;
+
+                GUI.color = Color.red;
+                GUI.Box(new Rect(x, y, boxWidth, boxHeight), GUIContent.none);
+
+                GUIStyle style = new GUIStyle(GUI.skin.label)
+                {
+                    normal = { textColor = Color.white },
+                    alignment = TextAnchor.UpperCenter
+                };
+                GUI.Label(new Rect(screenPos.x - 50, y - 20, 100, 20), npcName, style);
             }
         }
     }

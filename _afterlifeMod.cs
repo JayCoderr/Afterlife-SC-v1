@@ -25,7 +25,7 @@ using Il2CppInterop.Runtime.InteropTypes;
 using Il2CppInterop.Runtime.InteropTypes.Arrays;
 using static _clientids._unityfunctions;
 using static _clientids._airesponses;
-using static _clientids._afterlifeBundleLoader;
+using static _afterlifeAssetLoader._afterlifeBundleLoader;
 using static _afterlifeMod._clientids;
 using static _clientids._hudelements;
 using static _clientids._advanceUnityEngineForgeMode;
@@ -121,11 +121,11 @@ namespace _afterlifeMod
                     MelonCoroutines.Start(_unityfunctions.SpawnScheduleIObjectCoroutine(randomName, new Vector3(-1.9f, 0f, -0.5818f), Quaternion.Euler(358.5705f, -50.6876f, 0.0013f), true));
                     MelonCoroutines.Start(MoveCloneOverTimeCoroutine(randomName + "_Clone", new Vector3(-1.9f, 0f, 0.9f), 5f));
                 }
+                MelonLogger.Msg("🎯 Loading AssetBundle now...");
+                MelonCoroutines.Start(LoadAllAssetBundles());
             }
             else
             {
-                MelonLogger.Msg("🎯 Loading AssetBundle now...");
-                MelonCoroutines.Start(LoadAllAssetBundles());
                 sceneStaticName = "Main";                  
             }
         }
@@ -149,6 +149,8 @@ namespace _afterlifeMod
             MenuControls();
             MenuForgeMode(true);//just a soft lock for dumping all of the gameobjects
         }
+        public static Player TargetPlayer; // The player we want to teleport to
+        public static bool showGUIPlayer = false;
 
         public override void OnGUI()
         {
@@ -158,6 +160,15 @@ namespace _afterlifeMod
                 dynamicStyle = new GUIStyle(GUI.skin.window);
                 dynamicStyle.normal.background = windowBackground;
                 styleNeedsUpdate = false;
+            }
+            if (!showGUIPlayer || TargetPlayer == null)
+                return;
+
+            GUI.Box(new Rect(10, 10, 200, 80), $"Teleport to: {TargetPlayer.name}");
+
+            if (GUI.Button(new Rect(20, 40, 180, 30), "Teleport Now"))
+            {
+                Player.Local.transform.position = TargetPlayer.transform.position;
             }
         }
 

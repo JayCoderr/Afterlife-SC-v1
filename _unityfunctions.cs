@@ -100,6 +100,8 @@ namespace _clientids
 
             yield break;
         }
+
+
         public static IEnumerator SpawnScheduleIObjectCoroutine(string searchName, Vector3 newPosition, Quaternion newRotation, bool setActive)
         {
             const float retryDelay = 0.5f;
@@ -256,7 +258,7 @@ namespace _clientids
         public static IEnumerator MoveCloneOverTimeCoroutine(string searchName, Vector3 targetPosition, float duration)
         {
             const float retryDelay = 0.5f;
-            const int maxAttempts = 30;
+            const int maxAttempts = 3;
             int attempt = 0;
 
             while (attempt < maxAttempts)

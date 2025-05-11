@@ -19,6 +19,7 @@ using static _afterlifeMod._functions;
 using static _afterlifeMod._functions.UnlimitedAmmoPatch;
 using static _afterlifeMod._clientids;
 using static _clientids._menuStructure;
+using _afterlifeScModMenu;
 
 namespace _afterlifeMod
 {
@@ -161,7 +162,7 @@ namespace _afterlifeMod
 
     public class _clientids
     {
-        public static Rect windowRect = new Rect(140f, 140f, 240, 400f);
+        public static Rect windowRect = new Rect(140f, 140f, 240f, 597f);
         public static Texture2D windowBackground;
         public static Texture2D MenuHud;
         public static bool isLoadingTexture = false;
@@ -204,6 +205,8 @@ namespace _afterlifeMod
         public static Texture2D loadedTextureX = null;
         public static bool textureLoaded = false;
         public static float width = 198f;
+        public static Color customColor;
+        public static Dictionary<string, List<MenuElement>> menuStructure = new Dictionary<string, List<MenuElement>>();
 
         public static void Init()
         {
@@ -221,15 +224,8 @@ namespace _afterlifeMod
                     // Ensure the window background has been loaded
                     if (windowBackground != null)
                     {
-                        // Log the size and type of the texture for debugging
-                        //MelonLogger.Msg($"Texture Loaded: Width = {windowBackground.width}, Height = {windowBackground.height}, Format = {windowBackground.format}");
-
                         // Draw the background texture on the window
                         GUI.DrawTexture(new Rect(0 - 10, 0 - 100, windowRect.width, windowRect.height), windowBackground);
-                    }
-                    else
-                    {
-                        //MelonLogger.Warning("Window background texture is null.");
                     }
 
                     // Reset the GUI color to its original value
@@ -237,17 +233,23 @@ namespace _afterlifeMod
 
                     // Create a new GUIStyle for the Scrollbar
                     GUIStyle Scrollbar = new GUIStyle(GUI.skin.box);
-                    Color colorDarkGreen = new Color(0.1f, 0f, 0.2f, 1f);
-                    Scrollbar.normal.background = MakeTexture(2, 2, colorDarkGreen); // Red scrollbar
+
+                    // Check if the custom color is set. If not, set it to your desired color.
+                    if (customColor == Color.clear) // You can use any default value check
+                    {
+                        customColor = SetScrollerColor(0.0f, 0.1f, 0.0f, 1f);
+                    }
+
+                    Scrollbar.normal.background = MakeTexture(2, 2, customColor); // Use the custom color
 
                     // Draw the scrollbar
                     GUI.Box(new Rect(ScrollbarXValue, ScrollbarYValue + ScrollbarInitPos, width, 20), "", Scrollbar);
+
                     MenuStructure();
                     GUI.DragWindow(new Rect(0, 0, 10000, 10000));
                 }
             }
             MenuSceneElements();
-            MenuHuds();
         }
 
         private static bool isFadingIn = false;
@@ -465,9 +467,116 @@ namespace _afterlifeMod
 
             return position * xScale; // This scales both X and Y uniformly (if you want both to scale similarly)
         }
-        private static Dictionary<string, int> submenuCounts = new Dictionary<string, int>();
+        public static Color ScrollerColor;
 
-        private static int activeSubMenuCount = 0;
+        public static void LoadMenuConfigDesign()
+        {
+            LoadMenuConfigDesignInternal(null, null);
+        }
+
+        public static void LoadMenuConfigDesign(string newBackground)
+        {
+            LoadMenuConfigDesignInternal(newBackground, null);
+        }
+
+        public static void LoadMenuConfigDesign(string newBackground, string newScrollerColor)
+        {
+            LoadMenuConfigDesignInternal(newBackground, newScrollerColor);
+        }
+
+        private static void LoadMenuConfigDesignInternal(string newBackground, string newScrollerColor)
+        {
+            string configDir = MelonLoader.Utils.MelonEnvironment.ModsDirectory;
+            string configPath = Path.Combine(configDir, "MenuConfig.txt");
+
+            if (!Directory.Exists(configDir))
+            {
+                Directory.CreateDirectory(configDir);
+                MelonLogger.Msg($"📁 Created Mods directory at: {configDir}");
+            }
+
+            // Default config values
+            string defaultBackground = "https://iili.io/3aYpopn.png";
+            string defaultScroller = "0.0,0.1,0.0,1.0";
+
+            // Create default config if missing
+            if (!File.Exists(configPath))
+            {
+                File.WriteAllText(configPath, $"MenuBackground={defaultBackground}\nScrollerColor={defaultScroller}");
+                MelonLogger.Warning("📄 MenuConfig.txt was missing and has been created with default values.");
+            }
+
+            Dictionary<string, string> config = new Dictionary<string, string>();
+
+            foreach (var line in File.ReadAllLines(configPath))
+            {
+                if (string.IsNullOrWhiteSpace(line) || line.StartsWith("#")) continue;
+
+                var parts = line.Split(new[] { '=' }, 2);
+                if (parts.Length == 2)
+                {
+                    string key = parts[0].Trim();
+                    string value = parts[1].Trim();
+                    config[key] = value;
+                }
+            }
+
+            if (newBackground != null)
+                config["MenuBackground"] = newBackground;
+
+            if (newScrollerColor != null)
+                config["ScrollerColor"] = newScrollerColor;
+
+            // Save updated config
+            List<string> newLines = new List<string>();
+            foreach (var kvp in config)
+            {
+                newLines.Add(kvp.Key + "=" + kvp.Value);
+            }
+            File.WriteAllLines(configPath, newLines.ToArray());
+
+            // Apply values
+            if (config.ContainsKey("MenuBackground"))
+            {
+                MenuBackground = config["MenuBackground"];
+            }
+
+            if (config.ContainsKey("ScrollerColor"))
+            {
+                string[] rgba = config["ScrollerColor"].Split(',');
+                if (rgba.Length == 4 &&
+                    float.TryParse(rgba[0], out float r) &&
+                    float.TryParse(rgba[1], out float g) &&
+                    float.TryParse(rgba[2], out float b) &&
+                    float.TryParse(rgba[3], out float a))
+                {
+                    ScrollerColor = new Color(r, g, b, a);
+                    SetScrollerColor(r, g, b, a);
+                }
+            }
+
+            MelonLogger.Msg("🎨 Menu background set to: " + MenuBackground);
+            MelonLogger.Msg("🎨 Scroller color set to: " + ScrollerColor);
+        }
+        public static void LoadMenuConfigDesignWithScroller(string newScrollerColor)
+        {
+            LoadMenuConfigDesignInternal(null, newScrollerColor);
+        }
+
+        public static Color SetScrollerColor(float r, float g, float b, float a)
+        {
+            // Set and return the custom color
+            customColor = new Color(r, g, b, a);
+            return customColor;
+        }
+        public static Color SetScrollerColorX(Color color)
+        {
+            customColor = color;
+            return color;
+        }
+        public static Dictionary<string, int> submenuCounts = new Dictionary<string, int>();
+
+        public static int activeSubMenuCount = 0;
         public static bool isEditingTextBox = false;
         public static string currentInput = "";
         public static bool isSelectAll = false;
@@ -477,7 +586,13 @@ namespace _afterlifeMod
             if (Input.GetKeyDown(KeyCode.F1))
             {
                 isMenuOpen = !isMenuOpen;
-                MelonCoroutines.Start(_hudelements.CreateRectangle(140, 140, 240f, 597, "https://iili.io/3aatyAu.png", 0, isMenuOpen));
+
+                if (!_hudelements.isCoroutineRunning && !_hudelements.isDownloadingTexture)
+                {
+                    LoadMenuConfigDesign();
+                    MenuHuds(isMenuOpen);
+                    MelonLogger.Msg($"Starting download once. {isMenuOpen}");
+                }
             }
 
             // Only allow navigation if not editing text
@@ -492,7 +607,6 @@ namespace _afterlifeMod
                     MenuStartIndex = (MenuStartIndex < activeSubMenuCount - 1) ? MenuStartIndex + 1 : 0;
                 }
             }
-            // Press Return to activate menu element
             // Press Return to activate menu element
             if (Input.GetKeyDown(KeyCode.Return) && isMenuOpen)
             {
@@ -682,9 +796,10 @@ namespace _afterlifeMod
         }
         public static Texture2D cachedTexture = null;
         public static bool isLoadingTextureX = false;
-        public static void MenuHuds()
+        public static string MenuBackground = "https://iili.io/3aYpopn.png";
+        public static void MenuHuds(bool isMenuOpen)
         {
-            //MelonCoroutines.Start(_hudelements.CreateRectangle(140, 140, 240, 597, "https://iili.io/3aatyAu.png", 0));
+            MelonCoroutines.Start(_hudelements.CreateRectangle(140, 140, windowRect.height, windowRect.width, MenuBackground, 0, isMenuOpen));
         }
         public static List<MenuElement> mainModsList = new List<MenuElement>();
         public static List<MenuOption> npcMenuOptions = new List<MenuOption>();
@@ -719,32 +834,20 @@ namespace _afterlifeMod
                     MenuTotalIndex = activeSubMenuCount;
                 }
             }
-
-            if (submenuName == "Sounds Menu")
+            switch (submenuName)
             {
-                for (int i = 1; i <= 9999; i++)
-                {
-                    int index = i;
-                    unifiedMenuOptions.Add(new MenuOption($"Option {index}", () => TestMsg($"Option {index}")));
-                }
-
-                // Update submenu count since you generated items manually
-                activeSubMenuCount = unifiedMenuOptions.Count;
-                MenuTotalIndex = activeSubMenuCount;
-                submenuCounts[submenuName] = activeSubMenuCount;
-            }//Modify Cash
-            if (submenuName == "Modify Cash")
-            {
-                for (int i = 1; i <= 9999; i++)
-                {
-                    int index = i;
-                    unifiedMenuOptions.Add(new MenuOption($"Option {index}", () => TestMsg($"Option {index}")));
-                }
-
-                // Update submenu count since you generated items manually
-                activeSubMenuCount = unifiedMenuOptions.Count;
-                MenuTotalIndex = activeSubMenuCount;
-                submenuCounts[submenuName] = activeSubMenuCount;
+                case "Sounds Menu":
+                    _generatedSubMenus.ModifyAudioMenu(submenuName);
+                    break;
+                case "Modify Cash":
+                    _generatedSubMenus.ModifyMoneyMenu(submenuName);
+                    break;
+                case "Loaded Prefabs":
+                    _generatedSubMenus.loadPrefabsMenu(submenuName);
+                    break;
+                default:
+                    _generatedSubMenus.loadPlayersByNameMenu(submenuName);
+                    break;
             }
         }
 

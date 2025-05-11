@@ -19,25 +19,23 @@ namespace _clientids
         //public static bool isTextureLoaded = false;
         public static GUIStyle dynamicStyle = null;
         public static bool styleNeedsUpdate = false;
+        public static bool isCoroutineRunning = false;
         public static IEnumerator CreateRectangle(float x, float y, float w, float h, string url, int i, bool isTextureLoaded = true)
         {
-            // ✅ Don't do anything if already loaded
-            if (isTextureLoaded)
-            {
-                showWindow = true;
-            }
+            if (isCoroutineRunning || isDownloadingTexture)
+                yield break;
 
-            // ✅ Don’t start if already downloading
-            if (isDownloadingTexture)
-
+            isCoroutineRunning = true;
             isDownloadingTexture = true;
-
-            UnityWebRequest uwr = UnityWebRequest.Get(url);
-            uwr.downloadHandler = new DownloadHandlerBuffer();
 
             try
             {
-                MelonLogger.Msg($"Starting texture download: {url}");
+                if (isTextureLoaded)
+                    showWindow = true;
+
+                UnityWebRequest uwr = UnityWebRequest.Get(url);
+                uwr.downloadHandler = new DownloadHandlerBuffer();
+
                 yield return uwr.SendWebRequest();
 
                 if (uwr.result == UnityWebRequest.Result.Success)
@@ -50,14 +48,15 @@ namespace _clientids
                     Texture2D newTexture = new Texture2D(2, 2, TextureFormat.RGBA32, false);
                     if (newTexture.LoadImage(imageData))
                     {
-                        MelonLogger.Msg($"✅ Texture loaded: {newTexture.width}x{newTexture.height}");
-
                         windowBackground = newTexture;
-                        windowRect = new Rect(x, y, w, h);
 
-                        // Create and apply the dynamic style
+                        // Only set position if windowRect is not initialized (e.g. width is zero)
+                        if (windowRect.width == 0 && windowRect.height == 0)
+                        {
+                            windowRect = new Rect(x, y, w, h);
+                        }
+
                         styleNeedsUpdate = true;
-
                         showWindow = true;
                     }
                     else
@@ -72,8 +71,8 @@ namespace _clientids
             }
             finally
             {
-                uwr.Dispose();
-                //isDownloadingTexture = false;
+                isDownloadingTexture = false;
+                isCoroutineRunning = false;
             }
         }
         public static void CreateText(float y, string text, ButtonAction onClick, int index)

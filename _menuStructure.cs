@@ -21,36 +21,51 @@ using _afterlifeMod;
 using static _afterlifeMod._clientids;
 using static _clientids._advanceUnityEngineForgeMode;
 using static _afterlifeMod._afterlifeMod;
+using Il2CppScheduleOne.UI;
+using System.Reflection;
+using static _clientids._menuStructure;
+using Il2CppScheduleOne;
+using Console = Il2CppScheduleOne.Console;
+using Il2CppScheduleOne.GameTime;
+using Il2CppScheduleOne.DevUtilities;
+using Il2CppScheduleOne.Skating;
+using static _afterlifeAssetLoader._afterlifeBundleLoader;
+using System.Runtime.CompilerServices;
+using Il2CppScheduleOne.Money;
 
 namespace _clientids
 {
     public static class _menuStructure
     {
+        public static bool PlayerPassout = false;
+        private static bool isCrosshairVisible = true;
+        private static bool isInvisible = true;
         public static Dictionary<string, List<MenuElement>> menuMap = new Dictionary<string, List<MenuElement>>
         {
             [$"{menunameX}"] = new List<MenuElement>//so far thier is 453 mods
             {
-                new MenuTextBox("Submenu Name", "", val => CreateSubMenu(val.ToString(), menuMap.ContainsKey(val.ToString()) ? menuMap[val.ToString()].Count : 0)),
-                new MenuOption("Main Mods", () => CreateSubMenu("Main Mods", 38)),//FlyMode()
+                new MenuOption("Main Mods", () => CreateSubMenu("Main Mods", 49)),//FlyMode()
                 new MenuOption("Npc Menu", () => CreateSubMenu("Npc Menu", 106)),//SkybaseHouseSpawner()
                 new MenuOption("Vehicles Menu", () => CreateSubMenu("Vehicles Menu", 7)),//SetJumpForce(30f)
                 new MenuOption("Give Items", () => CreateSubMenu("Give Items", 144)),
-                new MenuOption("Lobby Menu", () => CreateSubMenu("Lobby Menu", 17)),
+                new MenuOption("Lobby Menu", () => CreateSubMenu("Lobby Menu", 21)),
                 new MenuOption("UI Menu", () => CreateSubMenu("UI Menu", 19)),
                 new MenuOption("Teleport Menu", () => CreateSubMenu("Teleport Menu", 41)),
                 new MenuOption("Avatar Menu", () => CreateSubMenu("Avatar Menu", 14)),
                 new MenuOption("Gamemodes Menu", () => CreateSubMenu("Gamemodes Menu", 4)),
                 new MenuOption("Clone Menu", () => CreateSubMenu("Clone Menu", 5)),
-                new MenuOption("Message Menu", () => CreateSubMenu("Message Menu", 14)),
+                new MenuOption("Message Menu", () => CreateSubMenu("Message Menu", 21)),
                 new MenuOption("Weapon Mods", () => CreateSubMenu("Weapon Mods", 7)),
-                new MenuOption("Power Ups", () => CreateSubMenu("Power Ups", 8)),
+                new MenuOption("Power Ups", () => CreateSubMenu("Power Ups", 9)),
                 new MenuOption("Perks", () => CreateSubMenu("Perks", 5)),
                 new MenuOption("Forge Menu", () => CreateSubMenu("Forge Menu", 7)),
-                new MenuOption("Vision Menu", () => CreateSubMenu("Vision Menu - type reset", 20)),
+                new MenuOption("Vision Menu", () => CreateSubMenu("Vision Menu", 11)),
                 new MenuOption("Sounds Menu", () => CreateSubMenu("Sounds Menu", null)),
-                new MenuOption("Themes Menu", () => CreateSubMenu("Themes Menu", 7)),
+                new MenuOption("Menu Editor", () => CreateSubMenu("Menu Editor", 3)),
                 new MenuOption("Players Menu", () => CreateSubMenu("Players Menu", 3)),
-                new MenuOption("Profile Menu", () => CreateSubMenu("Profile Menu", 3))
+                new MenuOption("Profile Menu", () => CreateSubMenu("Profile Menu", 3)),
+                new MenuTextBox("Submenu Name", "", val => CreateSubMenu(val.ToString(), menuMap.ContainsKey(val.ToString()) ? menuMap[val.ToString()].Count : 0)),
+                new MenuOption("Loaded Prefabs", val => CreateSubMenu("Loaded Prefabs", menuStructure.ContainsKey("Loaded Prefabs") ? menuStructure["Loaded Prefabs"].Count : 0)),
             },
             ["Main Mods"] = new List<MenuElement>
             {
@@ -59,44 +74,57 @@ namespace _clientids
                 new MenuOption("Modify Cash", () => CreateSubMenu("Modify Cash", null)),
                 new MenuOption("Noclip", () => FlyMode()),
                 new MenuOption("Thirdperson", () => ToggleThirdPersonCamera()),
-                //new MenuOption("Police Ignore", () => Il2CppScheduleOne.Law.),
-                new MenuOption("Pro-mod", () => TestMsg("teasfasfast 6")),
+                new MenuOption("Clear Wanted lvl", ClearWantedLevel),
+                new MenuOption("Toggle Crosshair", () => Singleton<HUD>.Instance.SetCrosshairVisible(isCrosshairVisible = !isCrosshairVisible)),
+                new MenuOption("Pro-mod", () => PlayerSingleton<PlayerCamera>.Instance.OverrideFOV(120f, 0.5f)),
+                new MenuTextBox("Set World Time", "", input => { var text = input?.ToString() ?? ""; if (int.TryParse(text, out var time)) SetWorldTime(time);}),//SetTimeScale
+                new MenuTextBox("Set Time Scale", "", input => { var text = input?.ToString() ?? ""; if (int.TryParse(text, out var time)) SetWorldTimeScale(time);}),
                 new MenuOption("Wallhack", () => SetCameraMod("wallhack")),//could just turn building off on clientside when within a certain distance of a collider
-                new MenuOption("Invisiblity", () => TestMsg("test 8")),
-                new MenuOption("Aimbot", () => TestMsg("test 9")),
-                new MenuOption("Esp", () => TestMsg("test 10")),
+                new MenuOption("Toggle Visibility", () => InvisibleToggle(isInvisible = !isInvisible)),
+                new MenuOption("Police Aimbot Toggle", ToggleRotateToPoliceNPC),
+                new MenuOption("Toggle Police ESP", () => PoliceESPController.ToggleESP()),
                 new MenuOption("Unlimited Ammo", () => ToggleUnlimitedAmmo()),
                 new MenuOption("Leftside arm", () => TestMsg("test 12")),
                 new MenuOption("Human Torch", () => TestMsg("test 13")),
                 new MenuOption("Human Fountain", () => TestMsg("test 14")),
-                new MenuOption("Rotate Camera", () => TestMsg("test 15")),
-                new MenuOption("Auto teabag", () => TestMsg("test 16")),
-                new MenuOption("Drunk mode", () => TestMsg("test 17")),
-                new MenuOption("Double Jump", () => TestMsg("test 18")),
+                new MenuOption("Rotate Camera", ToggleCameraRotation),
+                new MenuOption("Auto teabag", () => AutoTeaBagMode()),
+                new MenuOption("Drunk mode", () => ToggleDrunkCamera(60f)),
+                new MenuOption("Double Jump", () => PlayerMovement.JumpMultiplier = 2),
                 new MenuOption("Gore mode", () => TestMsg("test 19")),
-                new MenuOption("Desolidify Walls", () => TestMsg("test 20")),//just look at how u did the forgemode, when advance couldn't see the door i was able to walk through it basically.
-                new MenuOption("Change Hair", () => TestMsg("test 21")),
-                new MenuOption("Kamikaze trucks", () => TestMsg("test 22")),
+                new MenuOption("Desolidify Walls", () => AutoDeleteNearbyCollidersToggle()),//just look at how u did the forgemode, when advance couldn't see the door i was able to walk through it basically.
+                new MenuTextBox("Hair Style Path", "", (val) => SetAppearanceProperty("hairstyle", $"{val}")),
+                new MenuOption("Kamikaze trucks", () => KamikizeRocks("SUV")),
                 new MenuOption("Show x,y,z", () => PrintCoords()),
-                new MenuOption("Bouncepad", () => TestMsg("test 24")),
-                new MenuOption("Spec-Bullet", () => TestMsg("test 24")),//when u shoot a bullet have the camera follow it berifly then return to orginal spot, spec-bullet
-                new MenuOption("Custom Crosshair", () => TestMsg("test 24")),
-                new MenuOption("Custom Healthbar", () => TestMsg("test 24")),
-                new MenuOption("DoHeart Host", () => TestMsg("test 24")),
-                new MenuOption("NPC Forcefield", () => TestMsg("test 24")),
-                new MenuOption("Money gun", () => TestMsg("test 24")),//when u shoot a gun gameObject, it will give u money
+                new MenuOption("Bouncepad", () => BouncePadSpawner("liquid drum")),//<-- might add in a min
+                new MenuOption("Freeze Self", () => PlayerMovement.Instance.canMove = !PlayerMovement.Instance.canMove),
+                new MenuOption("NPC Forcefield", () => PlayerMovement.Instance.crouchSpeedMultipler = 999),
+                new MenuOption("Toggle Money Gun", () => MoneyGun = !MoneyGun),//when u shoot a gun gameObject, it will give u money
                 new MenuOption("Matrix Mode", () => TestMsg("test 24")),//Shooting a gun gameObject will change the timescale
-                new MenuOption("Fov", () => TestMsg("test 24")),
+                new MenuTextBox("Type Fov", "", val => { if (float.TryParse(val as string, out var f)) PlayerSingleton<PlayerCamera>.Instance.OverrideFOV(f, 0.5f); }),
+                new MenuOption("Pass Out", () => { PlayerPassout = !PlayerPassout; if (PlayerPassout) Player.Local.PassOut(); else Player.Local.PassOutRecovery(); }),
+                new MenuOption("Invert Controls", () => Player.Local.Disoriented = !Player.Local.Disoriented),
+                new MenuOption("Fake flyMode", () => Player.Local.Crouched = !Player.Local.Crouched),
+                new MenuOption("Schizo Mode", () => Player.Local._Schizophrenic_k__BackingField = !Player.Local._Schizophrenic_k__BackingField),
+                new MenuOption("Slippery Floor", () => Player.Local._Slippery_k__BackingField = !Player.Local._Slippery_k__BackingField),
+                new MenuOption("Seizure", () => Player.Local._Seizure_k__BackingField = !Player.Local._Seizure_k__BackingField),
+                new MenuOption("Suicide", () => Player.Local.OnDied()),
+                new MenuOption("Arrest Yourself", () => Player.Local.Arrest()),
+                new MenuOption("Dismount Skate-board", () => Player.Local.DismountSkateboard()),
+                new MenuTextBox("Type Testname", "", (val) => Player.Local.PlayerName = $"{val}"),
                 new MenuOption("Spawn Tut map", () => TutObjectSpawner("Tutorial","Map")),//CreateRickPortal
                 new MenuOption("Rick Sanchez Gif", () => Create3dGui("Rick", "", "https://iili.io/30LlTru.png")),//testItem//Create3dGui//CreateNewObjectWithGUI
                 new MenuOption("Nelson With gui", () => SpawnScheduleINpcWithGui("UncleNelson", "Hello MF Press E To Skybase", "https://iili.io/3aatyAu.png")),
                 new MenuOption("Spawn Portal", () => CreateRickPortal("Portal", "", "https://iili.io/30i7nPj.png")),
+                new MenuTextBox("Type Skate Jumpforce", "", (val) => SetSkateboardJumpForce(val)),//SetSkateboardSuperJump
+                new MenuOption("Skate SuperJump", SkateboardSuperJump),
+                new MenuTextBox("Type Skate Speed", "", (val) => SetSkateboardPushForce(val)),
                 //CreateTextBox(100, "Type item name...", (input) =>{GiveItemToPlayer(input, 1);}, 0);
-                new MenuOption("Back", () => CreateSubMenu(menuName, 21))
+                new MenuOption("Back", () => CreateSubMenu(menuName, 22))
             },
             ["Modify Cash"] = new List<MenuElement>
             {
-                new MenuOption("Back", () => CreateSubMenu(menuName, 21)),
+                new MenuOption("Back", () => CreateSubMenu(menuName, 22)),
                 new MenuTextBox("Type cashAmount", "", (val) => SpawnVehicle($"{val}".ToLowerInvariant()))
             },
             ["Npc Menu"] = new List<MenuElement>
@@ -206,7 +234,7 @@ namespace _clientids
                 new MenuOption("Spawn Jeff", () => SpawnScheduleINpc("Jeff")),
                 new MenuOption("Spawn Albert", () => SpawnScheduleINpc("Albert")),
                 new MenuOption("Spawn Herbert", () => SpawnScheduleINpc("Herbert")),
-                new MenuOption("Back", () => CreateSubMenu(menuName, 21))
+                new MenuOption("Back", () => CreateSubMenu(menuName, 22))
             },
             ["Vehicles Menu"] = new List<MenuElement>
             {
@@ -216,14 +244,14 @@ namespace _clientids
                 new MenuOption("Spawn Bruiser", () => SpawnVehicle("bruiser")),
                 new MenuOption("Spawn Hounddog", () => SpawnVehicle("hounddog")),
                 new MenuOption("Spawn Cheetah", () => SpawnVehicle("cheetah")),
-                new MenuOption("Back", () => CreateSubMenu(menuName, 21))
+                new MenuOption("Back", () => CreateSubMenu(menuName, 22))
             },
             ["Give Items"] = new List<MenuElement>
             {
                 new MenuTextBox("type itemName", "", (val) => GiveItemToPlayer($"{val}".ToLowerInvariant(), 1)),
                 new MenuOption("Cocaine", () => GiveItemToPlayer("cocaine", 1)),
                 new MenuOption("Cash", () => CashDrop()),
-                new MenuOption("test Cash", () => CashDrop()),
+                new MenuOption("test Cash", () => DropCashAtLookPosition(GameObject.Find("10$ Pickup")?.GetComponent<Il2CppScheduleOne.ItemFramework.CashPickup>())),
                 new MenuOption("Acid", () => GiveItemToPlayer("acid", 1)),
                 new MenuOption("Addy", () => GiveItemToPlayer("addy", 1)),
                 new MenuOption("Air pot", () => GiveItemToPlayer("airpot", 1)),
@@ -360,18 +388,20 @@ namespace _clientids
                 new MenuOption("TV", () => GiveItemToPlayer("TV", 1)),
                 new MenuOption("V-Neck Shirt", () => GiveItemToPlayer("vneck", 1)),
                 new MenuOption("Vest", () => GiveItemToPlayer("vest", 1)),
-                new MenuOption("Viagra", () => GiveItemToPlayer("viagra", 1)),
+                new MenuOption("Viagor", () => GiveItemToPlayer("viagor", 1)), //renamed from Viagra to  Viagor
                 new MenuOption("Watering Can", () => GiveItemToPlayer("wateringcan", 1)),
                 new MenuOption("Wooden Square Table", () => GiveItemToPlayer("woodsquaretable", 1)),
-                new MenuOption("Back", () => CreateSubMenu(menuName, 21))
+                new MenuOption("Back", () => CreateSubMenu(menuName, 22))
             },
             ["Lobby Menu"] = new List<MenuElement>
             {
-                new MenuOption("End Game", () => SetJumpForce(30f)),
-                new MenuOption("Default Jump", () => SetJumpForce(30f)),
+                new MenuOption("End Game", () => SetJumpForce(10f)),
+                new MenuOption("Default Jump", () => SetJumpForce(10f)),
                 new MenuTextBox("JumpForce", null, val => SetJumpForce((float)val)),
-                new MenuOption("Insane Jump", SetJumpForceD, 200f),
-                new MenuOption("No gravity", () => SetJumpForce(10f)),
+                new MenuOption("Insane Jump", SetJumpForceD, 200f),//SetMoveSpeed
+                new MenuOption("No gravity", () => SetGravity(0)),
+                new MenuOption("Low gravity", () => SetGravity(0.2f)),
+                new MenuTextBox("Type MovementSpeed", "", val => SetMovementSpeed(float.TryParse(val as string, out var speed) ? speed : 0f)),
                 new MenuOption("Timescale", () => SetJumpForce(10f)),
                 new MenuOption("Fog", () => SetJumpForce(10f)),
                 new MenuOption("Rain Models", () => SetJumpForce(10f)),
@@ -381,9 +411,11 @@ namespace _clientids
                 new MenuOption("Meele Distance", () => SetJumpForce(10f)),
                 new MenuOption("Unlimited Jump", () => SetJumpForce(10f)),
                 new MenuOption("Kill Camper players", () => SetJumpForce(10f)),//MakePlayerSleep
-                new MenuOption("Kasdas", () => ToggleUnlimitedAmmo()),
+                new MenuOption("Drivaeable RV", () => MelonCoroutines.Start(SpawnNetWorkScheduleIObjectCoroutineX("Coupe", Player.Local.LocalGameObject.transform.position + Player.Local.LocalGameObject.transform.forward * 5f, Quaternion.identity, true, GameObject.Find("RV")))),
+                new MenuOption("Schizo Vehicle 1", () => MelonCoroutines.Start(SpawnNetWorkScheduleIObjectCoroutineX("SchizoGoblin", Player.Local.LocalGameObject.transform.position + Player.Local.LocalGameObject.transform.forward * 5f, Quaternion.identity, true, GameObject.Find("Coupe")))),
+                new MenuOption("Schizo Vehicle 2", () => MelonCoroutines.Start(SpawnNetWorkScheduleIObjectCoroutineX("Coupe", Player.Local.LocalGameObject.transform.position + Player.Local.LocalGameObject.transform.forward * 5f, Quaternion.identity, true, GameObject.Find("SchizoGoblin")))),
                 new MenuOption("GodMode", () => ToggleGodMode()),//testTexture
-                new MenuOption("Back", () => CreateSubMenu(menuName, 21))
+                new MenuOption("Back", () => CreateSubMenu(menuName, 22))
             },
             ["UI Menu"] = new List<MenuElement>//SleepCanvas
             {
@@ -405,13 +437,12 @@ namespace _clientids
                 new MenuOption("HandOver UI", () => ToggleSchedulIUIByName("HandoverScreen")),
                 new MenuOption("DiscardSlot UI", () => ToggleSchedulIUIByName("SleepCanvas")),
                 new MenuOption("CreateMixInterface UI", () => ToggleSchedulIUIByName("SleepCanvas")),
-                new MenuOption("Back", () => CreateSubMenu(menuName, 21))
+                new MenuOption("Back", () => CreateSubMenu(menuName, 22))
             },
             ["Teleport Menu"] = new List<MenuElement>
             {
                 new MenuTextBox("Type Coord", null, val => TeleportLocalPlayer((Vector3)ConvertInput(val as string, typeof(Vector3)))),
-                new MenuOption("Pizza Shop", () => TeleportLocalPlayer(new Vector3(0f,0f,0f))),
-                new MenuOption("Shred Shack", () => TeleportLocalPlayer(new Vector3(0f,0f,0f))),
+                new MenuOption("Shred Shack", () => TeleportLocalPlayer(new Vector3(-39.460007f, -3.6750002f, 117.799995f))),
                 new MenuOption("Bud's Bar", () => TeleportLocalPlayer(new Vector3(0f,0f,0f))),
                 new MenuOption("Pill-Ville Pharmacy", () => TeleportLocalPlayer(new Vector3(0f,0f,0f))),
                 new MenuOption("Fat Dragon Chinese", () => TeleportLocalPlayer(new Vector3(0f,0f,0f))),
@@ -420,36 +451,39 @@ namespace _clientids
                 new MenuOption("Arcade", () => TeleportLocalPlayer(new Vector3(0f,0f,0f))),
                 new MenuOption("Parkinglot", () => TeleportLocalPlayer(new Vector3(0f,0f,0f))),
                 new MenuOption("Thompson Construction", () => TeleportLocalPlayer(new Vector3(0f,0f,0f))),
-                new MenuOption("Motel", () => TeleportLocalPlayer(new Vector3(0f,0f,0f))),
-                new MenuOption("Brown Apartments", () => TeleportLocalPlayer(new Vector3(0f,0f,0f))),
-                new MenuOption("Motel Office", () => TeleportLocalPlayer(new Vector3(0f,0f,0f))),
-                new MenuOption("Taco Ticklers", () => TeleportLocalPlayer(new Vector3(0f,0f,0f))),
+                new MenuOption("Motel", () => TeleportLocalPlayer(new Vector3(-66.41f, 1.69f, 82.84f))),
+                new MenuOption("Brown Apartments", () => TeleportLocalPlayer(new Vector3(-169.38608f, -4f, 96.512794f))),
+                new MenuOption("Motel Office", () => TeleportLocalPlayer(new Vector3(-64.28f, 0.39f, 142.12f))),
+                new MenuOption("Taco Ticklers", () => TeleportLocalPlayer(new Vector3(-30.49f, 1.07f, 60.8f))),
                 new MenuOption("The Piss Hut", () => TeleportLocalPlayer(new Vector3(0f,0f,0f))),
-                new MenuOption("Pawn Shop", () => TeleportLocalPlayer(new Vector3(0f,0f,0f))),
+                new MenuOption("Pawn Shop", () => TeleportLocalPlayer(new Vector3(-61.25f, 0f, 49.25f))),
                 new MenuOption("Slop Shop", () => TeleportLocalPlayer(new Vector3(0f,0f,0f))),
                 new MenuOption("Barber Shop", () => TeleportLocalPlayer(new Vector3(0f,0f,0f))),
-                new MenuOption("Laundromat", () => TeleportLocalPlayer(new Vector3(0f,0f,0f))),
+                new MenuOption("Laundromat", () => TeleportLocalPlayer(new Vector3(-22.19f, 1.07f, 25.36f))),
                 new MenuOption("Thrifty Threads", () => TeleportLocalPlayer(new Vector3(0f,0f,0f))),
                 new MenuOption("Top Dog Car Wash", () => TeleportLocalPlayer(new Vector3(0f,0f,0f))),
                 new MenuOption("Hyland Auto", () => TeleportLocalPlayer(new Vector3(0f,0f,0f))),
                 new MenuOption("Auto Shop", () => TeleportLocalPlayer(new Vector3(0f,0f,0f))),
                 new MenuOption("Gas-Mart", () => TeleportLocalPlayer(new Vector3(0f,0f,0f))),
-                new MenuOption("Post Office", () => TeleportLocalPlayer(new Vector3(0f,0f,0f))),
+                new MenuOption("Mayor house", () => TeleportLocalPlayer(new Vector3(90f, 0f, 92f))),
+                new MenuOption("Post Office", () => TeleportLocalPlayer(new Vector3(47.19f, 1.07f, 5.03f))),
                 new MenuOption("Blueball's Boutique", () => TeleportLocalPlayer(new Vector3(0f,0f,0f))),
-                new MenuOption("Ray's Real Estate", () => TeleportLocalPlayer(new Vector3(0f,0f,0f))),
+                new MenuOption("Ray's Real Estate", () => TeleportLocalPlayer(new Vector3(81.4f, 0f, -15.1f))),
                 new MenuOption("Handy Hawk's Hardware", () => TeleportLocalPlayer(new Vector3(0f,0f,0f))),
                 new MenuOption("Hyland Medical", () => TeleportLocalPlayer(new Vector3(0f,0f,0f))),
+                new MenuOption("Pizzeria", () => TeleportLocalPlayer(new Vector3(-27.85f, -4f, 145.35f))),
                 new MenuOption("Supermarket", () => TeleportLocalPlayer(new Vector3(0f,0f,0f))),
                 new MenuOption("Police Station", () => TeleportLocalPlayer(new Vector3(0f,0f,0f))),
-                new MenuOption("Town Hall", () => TeleportLocalPlayer(new Vector3(0f,0f,0f))),
-                new MenuOption("Church", () => TeleportLocalPlayer(new Vector3(0f,0f,0f))),
+                new MenuOption("Town Hall", () => TeleportLocalPlayer(new Vector3(58.85f, 1.25f, 31.00003f))),
+                new MenuOption("Church", () => TeleportLocalPlayer(new Vector3(139.79f, 0.17f, 44.74f))),
                 new MenuOption("Butterbox Cafe and Bakery", () => TeleportLocalPlayer(new Vector3(0f,0f,0f))),
                 new MenuOption("The Crimson Canary", () => TeleportLocalPlayer(new Vector3(0f,0f,0f))),
                 new MenuOption("Casino", () => TeleportLocalPlayer(new Vector3(0f,0f,0f))),
                 new MenuOption("Basketball Court", () => TeleportLocalPlayer(new Vector3(0f,0f,0f))),
-                new MenuOption("Bungalow", () => TeleportLocalPlayer(new Vector3(0f,0f,0f))),
-                new MenuOption("Docks Warehouse", () => TeleportLocalPlayer(new Vector3(0f,0f,0f))),
-                new MenuOption("Back", () => CreateSubMenu(menuName, 21))
+                new MenuOption("Tattoo Parlour", () => TeleportLocalPlayer(new Vector3(-134.604f, -4f, 69.38f))),
+                new MenuOption("Bungalow", () => TeleportLocalPlayer(new Vector3(-168.13f, -2.74f, 113.64f))),
+                new MenuOption("Docks Warehouse", () => TeleportLocalPlayer(new Vector3(-76.21f, -1.46f, -60.63f))),
+                new MenuOption("Back", () => CreateSubMenu(menuName, 22))
             },
             ["Avatar Menu"] = new List<MenuElement>
             {
@@ -466,7 +500,7 @@ namespace _clientids
                 new MenuTextBox("Shoes color", "", (val) => SetAppearanceProperty("shoescolor", $"{val}")),
                 new MenuTextBox("Headwear color", "", (val) => SetAppearanceProperty("headwearcolor", $"{val}")),
                 new MenuTextBox("Tattoos", "", (val) => SetAppearanceProperty("tattoos", $"{val}")),
-                new MenuOption("Back", () => CreateSubMenu(menuName, 21))
+                new MenuOption("Back", () => CreateSubMenu(menuName, 22))
             },
             ["Gamemodes Menu"] = new List<MenuElement>
             {
@@ -474,62 +508,70 @@ namespace _clientids
                 new MenuOption("Hide & Seek Mode", () => SetJumpForce(30f)),
                 new MenuOption("Don't look down!", () => SetJumpForce(30f)),
                 new MenuOption("Slenderman", () => SetJumpForce(30f)),
-                new MenuOption("Back", () => CreateSubMenu(menuName, 21))
+                new MenuOption("Back", () => CreateSubMenu(menuName, 22))
             },
             ["Clone Menu"] = new List<MenuElement>
             {
-                new MenuOption("Clone self", () => SetJumpForce(30f)),
+                new MenuOption("Clone self", () => SpawnScheduleINpc("Player_Local")),
                 new MenuOption("Destroy Clone", () => SetJumpForce(30f)),
                 new MenuOption("Move Clone to Hairs", () => SetJumpForce(30f)),
                 new MenuOption("Play Clone Animation", () => SetJumpForce(30f)),
-                new MenuOption("Back", () => CreateSubMenu(menuName, 21))
+                new MenuOption("Back", () => CreateSubMenu(menuName, 22))
             },
             ["Message Menu"] = new List<MenuElement>
             {
-                new MenuOption("Hello", () => SetJumpForce(30f)),
-                new MenuOption("I Slap Ass", () => SetJumpForce(30f)),
-                new MenuOption("I eat Ass", () => SetJumpForce(30f)),
-                new MenuOption("Got that weed", () => SetJumpForce(30f)),
-                new MenuOption("420 hoe", () => SetJumpForce(30f)),
-                new MenuOption("Where the plug at?", () => SetJumpForce(30f)),
-                new MenuOption("Gimmie ur wallet fool", () => SetJumpForce(30f)),
-                new MenuOption("I fuck hoes", () => SetJumpForce(30f)),
-                new MenuOption("Drop yo pockets fool", () => SetJumpForce(30f)),
-                new MenuOption("m1911 to ur head", () => SetJumpForce(30f)),
-                new MenuOption("Put ur hands up", () => SetJumpForce(30f)),
-                new MenuOption("You want some meth", () => SetJumpForce(30f)),
-                new MenuOption("Overdose alert", () => SetJumpForce(30f)),
-                new MenuOption("Back", () => CreateSubMenu(menuName, 21))
+                new MenuOption("Hello", () => MelonLogger.Msg("Hello")),
+                new MenuOption("I Slap Ass", () => MelonLogger.Msg("I slap cheeks daily")),
+                new MenuOption("I eat Ass", () => MelonLogger.Msg("Buffet open 24/7")),
+                new MenuOption("Got that weed", () => MelonLogger.Msg("Only the loudest 🔥")),
+                new MenuOption("420 hoe", () => MelonLogger.Msg("Stay blazed, stay based")),
+                new MenuOption("Where the plug at?", () => MelonLogger.Msg("Need that 🔌 ASAP")),
+                new MenuOption("Gimmie ur wallet fool", () => MelonLogger.Msg("Empty them pockets 💸")),
+                new MenuOption("I fuck hoes", () => MelonLogger.Msg("Certified pipe layer")),
+                new MenuOption("Drop yo pockets fool", () => MelonLogger.Msg("Run them coins")),
+                new MenuOption("m1911 to ur head", () => MelonLogger.Msg("Click clack, it’s wrap time")),
+                new MenuOption("Put ur hands up", () => MelonLogger.Msg("This a stick-up")),
+                new MenuOption("You want some meth", () => MelonLogger.Msg("Breaking Bad season 9")),
+                new MenuOption("Overdose alert", () => MelonLogger.Msg("Narcan not included 💉")),
+                new MenuOption("I'm built different", () => MelonLogger.Msg("Stats maxed out 🔥")),
+                new MenuOption("Crackhead energy", () => MelonLogger.Msg("Vibrating at 9000hz")),
+                new MenuOption("Certified hood classic", () => MelonLogger.Msg("You know the vibes")),
+                new MenuOption("Slide into the DMs", () => MelonLogger.Msg("Smooth criminal 🕺")),
+                new MenuOption("U got games on yo phone?", () => MelonLogger.Msg("Give me that now 📱")),
+                new MenuOption("Chug jug time", () => MelonLogger.Msg("Full send, gamer")),
+                new MenuOption("🧌 Gremlin Mode", () => MelonLogger.Msg("Climbing walls and eating drywall")),
+                new MenuOption("Back", () => CreateSubMenu(menuName, 22))
             },
             ["Weapon Mods"] = new List<MenuElement>
             {
                 //M1911,Machete,Frying Pan,Baseball Bat, Revolver
                 new MenuOption("Change Projectile", () => SetJumpForce(30f)),
-                new MenuOption("Give M1911", () => SetJumpForce(30f)),
-                new MenuOption("Give Machete", () => SetJumpForce(30f)),
-                new MenuOption("Give Frying Pan", () => SetJumpForce(30f)),
-                new MenuOption("Give Baseball bat", () => SetJumpForce(30f)),
-                new MenuOption("Give Revolver", () => SetJumpForce(30f)),
-                new MenuOption("Back", () => CreateSubMenu(menuName, 21))
+                new MenuOption("Give M1911", () => GiveItemToPlayer("m1911", 1)),
+                new MenuOption("Give Machete", () => GiveItemToPlayer("machete", 1)),
+                new MenuOption("Give Frying Pan", () => GiveItemToPlayer("fryingpan", 1)), 
+                new MenuOption("Give Baseball bat", () => GiveItemToPlayer("baseballbat", 1)),
+                new MenuOption("Give Revolver", () => GiveItemToPlayer("revolver", 1)),
+                new MenuOption("Back", () => CreateSubMenu(menuName, 22))
             },
             ["Power Ups"] = new List<MenuElement>
             {
-                new MenuOption("Super Speed 1mins", () => SetJumpForce(30f)),
-                new MenuOption("Slowmode 1mins", () => SetJumpForce(30f)),
-                new MenuOption("Fastmode 1mins", () => SetJumpForce(30f)),
-                new MenuOption("Godmode 1mins", () => SetJumpForce(30f)),
-                new MenuOption("Flymode 1mins", () => SetJumpForce(30f)),
-                new MenuOption("Demi God 1mins", () => SetJumpForce(30f)),
-                new MenuOption("Free items 1mins", () => SetJumpForce(30f)),
-                new MenuOption("Back", () => CreateSubMenu(menuName, 21))
+                new MenuOption("Super Speed 1mins", () => MelonCoroutines.Start(GiveSetMovementSpeedTimeSpecified(60f))),
+                new MenuOption("Super Jump 1mins", () => MelonCoroutines.Start(GiveSuperJumpTimeSpecified(60f))),
+                new MenuOption("Slowmode 1mins", () => MelonCoroutines.Start(GiveSuperJumpTimeSpecified(60f))),
+                new MenuOption("Fastmode 1mins", () => MelonCoroutines.Start(GiveSuperJumpTimeSpecified(60f))),
+                new MenuOption("Godmode 1mins", () => MelonCoroutines.Start(GiveGodModeTimeSpecified(60f))),
+                new MenuOption("Flymode 1mins", () => MelonCoroutines.Start(GiveSuperJumpTimeSpecified(60f))),
+                new MenuOption("Demi God 1mins", () => MelonCoroutines.Start(GiveSuperJumpTimeSpecified(60f))),
+                new MenuOption("Free items 1mins", () => MelonCoroutines.Start(GiveSuperJumpTimeSpecified(60f))),
+                new MenuOption("Back", () => CreateSubMenu(menuName, 22))
             },
             ["Perks"] = new List<MenuElement>//remake vending machines possibly?
             {
-                new MenuOption("More Drink types", () => SetJumpForce(30f)),
-                new MenuOption("More Drink 1 types", () => SetJumpForce(30f)),
-                new MenuOption("More Drink 2 types", () => SetJumpForce(30f)),
-                new MenuOption("More Drink 3 types", () => SetJumpForce(30f)),
-                new MenuOption("Back", () => CreateSubMenu(menuName, 21))
+                new MenuOption("Faster movement cuke", () => GiveItemToPlayer("cuke", 1)),
+                new MenuOption("Higher jump cuke", () => GiveItemToPlayer("cuke", 1)),
+                new MenuOption("Rum and Cuke", () => GiveItemToPlayer("cuke", 1)),
+                new MenuOption("Your a ghost cuke", () => GiveItemToPlayer("cuke", 1)),
+                new MenuOption("Back", () => CreateSubMenu(menuName, 22))
             },
             ["Forge Menu"] = new List<MenuElement>
             {
@@ -539,56 +581,126 @@ namespace _clientids
                 new MenuOption("Skybase Other 2", () => SkybaseHouseSpawner("Bungalow")),
                 new MenuOption("Forge Mode Toggle", () => forgeModeBool = !forgeModeBool),
                 new MenuOption("Spawn Cash", () => CashDrop()),
-                new MenuOption("Back", () => CreateSubMenu(menuName, 21))
+                new MenuOption("Back", () => CreateSubMenu(menuName, 22))
             },
-            ["Vision Menu - type reset"] = new List<MenuElement>
+            ["Vision Menu"] = new List<MenuElement>
             {
-                new MenuTextBox("Type Skycolor", "", (val) => SetCameraMod($"{val}".ToLowerInvariant())),
-                new MenuTextBox("Type wallhack", "", (val) => SetCameraMod($"{val}".ToLowerInvariant())),
-                new MenuTextBox("Type rts", "", (val) => SetCameraMod($"{val}".ToLowerInvariant())),
-                new MenuTextBox("Type old times mode", "", (val) => SetCameraMod($"{val}".ToLowerInvariant())),
-                new MenuOption("Camera filter test 5", () => SetJumpForce(30f)),
-                new MenuOption("Camera filter test 6", () => SetJumpForce(30f)),
-                new MenuOption("Camera filter test 7", () => SetJumpForce(30f)),
-                new MenuOption("Camera filter test 8", () => SetJumpForce(30f)),
-                new MenuOption("Camera filter test 9", () => SetJumpForce(30f)),
-                new MenuOption("Camera filter test 10", () => SetJumpForce(30f)),
-                new MenuOption("Camera filter test 11", () => SetJumpForce(30f)),
-                new MenuOption("Camera filter test 12", () => SetJumpForce(30f)),
-                new MenuOption("Camera filter test 13", () => SetJumpForce(30f)),
-                new MenuOption("Camera filter test 14", () => SetJumpForce(30f)),
-                new MenuOption("Camera filter test 15", () => SetJumpForce(30f)),
-                new MenuOption("Camera filter test 16", () => SetJumpForce(30f)),
-                new MenuOption("Camera filter test 17", () => SetJumpForce(30f)),
-                new MenuOption("Camera filter test 18", () => SetJumpForce(30f)),
-                new MenuOption("Camera filter test 19", () => SetJumpForce(30f)),
-                new MenuOption("Back", () => CreateSubMenu(menuName, 21))
+                new MenuOption("Sky Colors Menu", val => CreateSubMenu("Sky Colors Menu", 26)),//ToggleDiscoSkyMode
+                new MenuOption("Disco Skymode", val => ToggleDiscoSkyMode()),
+                new MenuOption("meth head vision", () => SetCameraMod("meth head")),
+                new MenuOption("real time strat vision", () => SetCameraMod("rts")),
+                new MenuOption("wall hack vision", () => SetCameraMod("wallhack")),
+                new MenuOption("old times vision", () => SetCameraMod("old times")),
+                new MenuOption("dreamscape vision", () => SetCameraMod("dreamscape")),
+                new MenuOption("alien vision", () => SetCameraMod("alien")),
+                new MenuOption("infrared vision", () => SetCameraMod("infrared")),
+                new MenuOption("reset visions", () => SetCameraMod("reset")),
+                new MenuOption("Back", () => CreateSubMenu(menuName, 22))
+            },
+            ["Sky Colors Menu"] = new List<MenuElement>
+            {
+                new MenuOption("reset visions", () => SetCameraMod("reset")),
+                new MenuOption("black sky", () => SetCameraMod("#000000")),
+                new MenuOption("white sky", () => SetCameraMod("#FFFFFF")),
+                new MenuOption("gray sky", () => SetCameraMod("#808080")),
+                new MenuOption("light gray sky", () => SetCameraMod("#D3D3D3")),
+                new MenuOption("dark gray sky", () => SetCameraMod("#404040")),
+                new MenuOption("red sky", () => SetCameraMod("#FF0000")),
+                new MenuOption("green sky", () => SetCameraMod("#00FF00")),
+                new MenuOption("blue sky", () => SetCameraMod("#0000FF")),
+                new MenuOption("pink sky", () => SetCameraMod("#FFC0CB")),
+                new MenuOption("purple sky", () => SetCameraMod("#800080")),
+                new MenuOption("orange sky", () => SetCameraMod("#FFA500")),
+                new MenuOption("yellow sky", () => SetCameraMod("#FFFF00")),
+                new MenuOption("cyan sky", () => SetCameraMod("#00FFFF")),
+                new MenuOption("magenta sky", () => SetCameraMod("#FF00FF")),
+                new MenuOption("lime sky", () => SetCameraMod("#32CD32")),
+                new MenuOption("teal sky", () => SetCameraMod("#008080")),
+                new MenuOption("navy sky", () => SetCameraMod("#000080")),
+                new MenuOption("maroon sky", () => SetCameraMod("#800000")),
+                new MenuOption("gold sky", () => SetCameraMod("#FFD700")),
+                new MenuOption("sky blue", () => SetCameraMod("#87CEEB")),
+                new MenuOption("sunset orange", () => SetCameraMod("#FF4500")),
+                new MenuOption("neon cyan", () => SetCameraMod("#00FFFF")),
+                new MenuOption("deep violet", () => SetCameraMod("#9400D3")),
+                new MenuOption("hot magenta", () => SetCameraMod("#FF00FF")),
+                new MenuOption("Back", () => CreateSubMenu("Vision Menu", 11))
             },
             ["Sounds Menu"] = new List<MenuElement>
             {
-                new MenuOption("Back", () => CreateSubMenu(menuName, 21))
+                new MenuOption("Devlish Trio - Baker phonk", () => MelonCoroutines.Start(PlayAudio("https://www.dropbox.com/scl/fi/q5ndb92vsij3kb5oqz92o/baker-phonk.mp3?rlkey=de4r3b74m8e9tlz9lpek3iy3g&st=h45djh9r&dl=1"))),
+                new MenuOption("Back", () => CreateSubMenu(menuName, 22))
             },
-            ["Themes Menu"] = new List<MenuElement>
+            ["Menu Editor"] = new List<MenuElement>
             {
-                new MenuOption("Default", () => SetJumpForce(30f)),
-                new MenuOption("Default 1", () => SetJumpForce(30f)),
-                new MenuOption("Default 2", () => SetJumpForce(30f)),
-                new MenuOption("Default 3", () => SetJumpForce(30f)),
-                new MenuOption("Default 4", () => SetJumpForce(30f)),
-                new MenuOption("Default 5", () => SetJumpForce(30f)),
-                new MenuOption("Back", () => CreateSubMenu(menuName, 21))
+                new MenuTextBox("type CustomBg url", "", (val) => LoadMenuConfigDesign($"{val}")),
+                new MenuOption("Scroller Menu", val => CreateSubMenu("Scrollbar Menu", 51)),
+                new MenuOption("Back", () => CreateSubMenu(menuName, 22))
             },
-            ["Players Menu"] = new List<MenuElement>
+            ["Scrollbar Menu"] = new List<MenuElement>
             {
-                new MenuOption("Load Players Menu", () => SetJumpForce(30f)),
-                new MenuOption("All Players Menu", () => SetJumpForce(30f)),
-                new MenuOption("Back", () => CreateSubMenu(menuName, 21))
+                new MenuOption("Red", () => LoadMenuConfigDesignWithScroller("0.1,0,0,1")),
+                new MenuOption("Green", () => LoadMenuConfigDesignWithScroller("0,0.1,0,1")),
+                new MenuOption("Blue", () => LoadMenuConfigDesignWithScroller("0,0,0.1,1")),
+                new MenuOption("White", () => LoadMenuConfigDesignWithScroller("0.1,0.1,0.1,1")),
+                new MenuOption("Black", () => LoadMenuConfigDesignWithScroller("0,0,0,1")),
+                new MenuOption("Gray", () => LoadMenuConfigDesignWithScroller("0.5,0.5,0.5,1")),
+                new MenuOption("Cyan", () => LoadMenuConfigDesignWithScroller("0,0.1,0.1,1")),
+                new MenuOption("Magenta", () => LoadMenuConfigDesignWithScroller("0.1,0,0.1,1")),
+                new MenuOption("Yellow", () => LoadMenuConfigDesignWithScroller("1,0.92,0.016,1")),
+                new MenuOption("Orange", () => LoadMenuConfigDesignWithScroller("1,0.5,0,1")),
+                new MenuOption("Purple", () => LoadMenuConfigDesignWithScroller("0.5,0,0.5,1")),
+                new MenuOption("Brown", () => LoadMenuConfigDesignWithScroller("0.6,0.3,0.1,1")),
+                new MenuOption("Lime", () => LoadMenuConfigDesignWithScroller("0.75,1,0,1")),
+                new MenuOption("Pink", () => LoadMenuConfigDesignWithScroller("1,0.41,0.71,1")),
+                new MenuOption("Teal", () => LoadMenuConfigDesignWithScroller("0,0.5,0.5,1")),
+                new MenuOption("Navy", () => LoadMenuConfigDesignWithScroller("0,0,0.5,1")),
+                new MenuOption("Sky Blue", () => LoadMenuConfigDesignWithScroller("0.53,0.81,0.92,1")),
+                new MenuOption("Turquoise", () => LoadMenuConfigDesignWithScroller("0.25,0.88,0.82,1")),
+                new MenuOption("Gold", () => LoadMenuConfigDesignWithScroller("1,0.84,0,1")),
+                new MenuOption("Silver", () => LoadMenuConfigDesignWithScroller("0.75,0.75,0.75,1")),
+                new MenuOption("Coral", () => LoadMenuConfigDesignWithScroller("1,0.5,0.31,1")),
+                new MenuOption("Beige", () => LoadMenuConfigDesignWithScroller("0.96,0.96,0.86,1")),
+                new MenuOption("Mint", () => LoadMenuConfigDesignWithScroller("0.74,0.99,0.79,1")),
+                new MenuOption("Lavender", () => LoadMenuConfigDesignWithScroller("0.9,0.9,0.98,1")),
+                new MenuOption("Crimson", () => LoadMenuConfigDesignWithScroller("0.86,0.08,0.24,1")),
+                new MenuOption("Indigo", () => LoadMenuConfigDesignWithScroller("0.29,0,0.51,1")),
+                new MenuOption("Maroon", () => LoadMenuConfigDesignWithScroller("0.5,0,0,1")),
+                new MenuOption("Olive", () => LoadMenuConfigDesignWithScroller("0.5,0.5,0,1")),
+                new MenuOption("Chartreuse", () => LoadMenuConfigDesignWithScroller("0.5,1,0,1")),
+                new MenuOption("Aquamarine", () => LoadMenuConfigDesignWithScroller("0.5,1,0.83,1")),
+                new MenuOption("Khaki", () => LoadMenuConfigDesignWithScroller("0.76,0.69,0.57,1")),
+                new MenuOption("Plum", () => LoadMenuConfigDesignWithScroller("0.87,0.63,0.87,1")),
+                new MenuOption("Salmon", () => LoadMenuConfigDesignWithScroller("0.98,0.5,0.45,1")),
+                new MenuOption("Periwinkle", () => LoadMenuConfigDesignWithScroller("0.8,0.8,1,1")),
+                new MenuOption("Slate Gray", () => LoadMenuConfigDesignWithScroller("0.44,0.5,0.56,1")),
+                new MenuOption("Sea Green", () => LoadMenuConfigDesignWithScroller("0.18,0.55,0.34,1")),
+                new MenuOption("Tomato", () => LoadMenuConfigDesignWithScroller("1,0.39,0.28,1")),
+                new MenuOption("Wheat", () => LoadMenuConfigDesignWithScroller("0.96,0.87,0.7,1")),
+                new MenuOption("Azure", () => LoadMenuConfigDesignWithScroller("0.94,1,1,1")),
+                new MenuOption("Ivory", () => LoadMenuConfigDesignWithScroller("1,1,0.94,1")),
+                new MenuOption("Peach", () => LoadMenuConfigDesignWithScroller("1,0.85,0.73,1")),
+                new MenuOption("Mauve", () => LoadMenuConfigDesignWithScroller("0.88,0.69,1,1")),
+                new MenuOption("Tan", () => LoadMenuConfigDesignWithScroller("0.82,0.71,0.55,1")),
+                new MenuOption("Dusty Rose", () => LoadMenuConfigDesignWithScroller("0.76,0.6,0.6,1")),
+                new MenuOption("Forest Green", () => LoadMenuConfigDesignWithScroller("0.13,0.55,0.13,1")),
+                new MenuOption("Royal Blue", () => LoadMenuConfigDesignWithScroller("0.25,0.41,0.88,1")),
+                new MenuOption("Steel Blue", () => LoadMenuConfigDesignWithScroller("0.27,0.51,0.71,1")),
+                new MenuOption("Hot Pink", () => LoadMenuConfigDesignWithScroller("1,0.41,0.71,1")),
+                new MenuOption("Midnight Blue", () => LoadMenuConfigDesignWithScroller("0.1,0.1,0.44,1")),
+                new MenuOption("Lemon", () => LoadMenuConfigDesignWithScroller("1,1,0.3,1")),
+                new MenuOption("Back", () => CreateSubMenu(menuName, 22)),
+            },
+            ["Loaded Prefabs"] = new List<MenuElement>
+            {
+                new MenuOption("Back", () => CreateSubMenu(menuName, 22)),
+                new MenuTextBox("type AssetName Prefab", "", (val) => _afterlifeAssetLoader._afterlifeBundleLoader.InstantiateByFullAssetNameAtLookOrMouse($"assets/assetbundlepacks/{val}/source/{val}.prefab")),
             },
             ["Profile Menu"] = new List<MenuElement>
             {
                 new MenuOption("Change Rank", () => SetJumpForce(30f)),
                 new MenuOption("Give XP", () => SetJumpForce(30f)),
-                new MenuOption("Back", () => CreateSubMenu(menuName, 21))
+                new MenuOption("Back", () => CreateSubMenu(menuName, 22))
             }
         };
     }
