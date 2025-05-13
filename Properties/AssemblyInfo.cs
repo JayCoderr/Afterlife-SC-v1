@@ -1,15 +1,17 @@
 ﻿using System.Reflection;
 using MelonLoader;
+using static _afterlifeScModMenu._globalVariables;
+using static _afterlifeScModMenu.BuildInfo;
 
-[assembly: AssemblyTitle(_afterlifeMod.BuildInfo.Description)]
-[assembly: AssemblyDescription(_afterlifeMod.BuildInfo.Description)]
-[assembly: AssemblyCompany(_afterlifeMod.BuildInfo.Company)]
-[assembly: AssemblyProduct(_afterlifeMod.BuildInfo.Name)]
-[assembly: AssemblyCopyright("Created by " + _afterlifeMod.BuildInfo.Author)]
-[assembly: AssemblyTrademark(_afterlifeMod.BuildInfo.Company)]
-[assembly: AssemblyVersion(_afterlifeMod.BuildInfo.Version)]
-[assembly: AssemblyFileVersion(_afterlifeMod.BuildInfo.Version)]
-[assembly: MelonInfo(typeof(_afterlifeMod._afterlifeMod), _afterlifeMod.BuildInfo.Name, _afterlifeMod.BuildInfo.Version, _afterlifeMod.BuildInfo.Author, _afterlifeMod.BuildInfo.DownloadLink)]
+[assembly: AssemblyTitle(Description)]
+[assembly: AssemblyDescription(Description)]
+[assembly: AssemblyCompany(Company)]
+[assembly: AssemblyProduct(Name)]
+[assembly: AssemblyCopyright("Created by " + Author)]
+[assembly: AssemblyTrademark(Company)]
+[assembly: AssemblyVersion(Version)]
+[assembly: AssemblyFileVersion(Version)]
+[assembly: MelonInfo(typeof(_afterlifeMod._afterlifeMod), Name, Version, Author, DownloadLink)]
 [assembly: MelonColor()]
 
 // Create and Setup a MelonGame Attribute to mark a Melon as Universal or Compatible with specific Games.
