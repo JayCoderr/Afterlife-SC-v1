@@ -50,6 +50,9 @@
       <SpecificVersion>False</SpecificVersion>
       <HintPath>..\..\..\..\Program Files (x86)\Steam\steamapps\common\Schedule I\MelonLoader\Il2CppAssemblies\Assembly-CSharp.dll</HintPath>
     </Reference>
+    <Reference Include="Boxophobic.AtmosphericHeightFog.Runtime">
+      <HintPath>..\..\..\..\Program Files (x86)\Steam\steamapps\common\Schedule I\MelonLoader\Dependencies\Il2CppAssemblyGenerator\Cpp2IL\cpp2il_out\Boxophobic.AtmosphericHeightFog.Runtime.dll</HintPath>
+    </Reference>
     <Reference Include="Il2Cpp">
       <HintPath>..\..\..\..\Program Files (x86)\Steam\steamapps\common\Schedule I\MelonLoader\Dependencies\SupportModules\Il2Cpp.dll</HintPath>
     </Reference>
@@ -131,6 +134,10 @@
     <Reference Include="Unity.Postprocessing.Runtime">
       <HintPath>..\..\..\..\Program Files (x86)\Steam\steamapps\common\Schedule I\MelonLoader\Il2CppAssemblies\Unity.Postprocessing.Runtime.dll</HintPath>
     </Reference>
+    <Reference Include="Unity.RenderPipelines.Universal.Runtime, Version=0.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\..\..\..\Program Files (x86)\Steam\steamapps\common\Schedule I\MelonLoader\Dependencies\Il2CppAssemblyGenerator\Cpp2IL\cpp2il_out\Unity.RenderPipelines.Universal.Runtime.dll</HintPath>
+    </Reference>
     <Reference Include="Unity.TextMeshPro">
       <HintPath>..\..\..\..\Program Files (x86)\Steam\steamapps\common\Schedule I\MelonLoader\Il2CppAssemblies\Unity.TextMeshPro.dll</HintPath>
     </Reference>
@@ -168,6 +175,10 @@
     <Reference Include="UnityEngine.InputModule, Version=0.0.0.0, Culture=neutral, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
       <HintPath>..\..\..\..\Program Files (x86)\Steam\steamapps\common\Schedule I\MelonLoader\Il2CppAssemblies\UnityEngine.InputModule.dll</HintPath>
+    </Reference>
+    <Reference Include="UnityEngine.ParticleSystemModule, Version=0.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\..\..\..\Program Files (x86)\Steam\steamapps\common\Schedule I\MelonLoader\Dependencies\Il2CppAssemblyGenerator\Cpp2IL\cpp2il_out\UnityEngine.ParticleSystemModule.dll</HintPath>
     </Reference>
     <Reference Include="UnityEngine.PhysicsModule, Version=0.0.0.0, Culture=neutral, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
@@ -216,19 +227,21 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="AllBuildings.cs" />
-    <Compile Include="_allnpcs.cs" />
-    <Compile Include="_advanceUnityEngineForgeMode.cs" />
-    <Compile Include="_afterlifeBundleLoader.cs" />
-    <Compile Include="_generatedSubMenus.cs" />
-    <Compile Include="_hudelements.cs" />
+    <Compile Include="_menuMiscFunctions\_allbuildings.cs" />
+    <Compile Include="_menuMiscFunctions\_allnpcs.cs" />
+    <Compile Include="_functions\_advanceUnityEngineForgeMode.cs" />
+    <Compile Include="_functions\_afterlifeBundleLoader.cs" />
+    <Compile Include="_menuStructure\_generatedSubMenus.cs" />
+    <Compile Include="_global\_globalVariables.cs" />
+    <Compile Include="_hudElements\_hudelements.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="_afterlifeMod.cs" />
-    <Compile Include="_airesponses.cs" />
-    <Compile Include="_clientids.cs" />
-    <Compile Include="_functions.cs" />
-    <Compile Include="_menuStructure.cs" />
-    <Compile Include="_unityfunctions.cs" />
+    <Compile Include="_scenes\_afterlifeMod.cs" />
+    <Compile Include="_menuMiscFunctions\_airesponses.cs" />
+    <Compile Include="_menuStructure\_clientids.cs" />
+    <Compile Include="_functions\_functions.cs" />
+    <Compile Include="_scenes\_mainMenu.cs" />
+    <Compile Include="_menuStructure\_menuStructure.cs" />
+    <Compile Include="_functions\_unityfunctions.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="app.config" />
